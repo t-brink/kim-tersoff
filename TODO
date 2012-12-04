@@ -1,0 +1,29 @@
+* use assert() macro to check bounds etc and disable for release builds
+
+* can the output of getm_compute() be assumed to be constant or not?
+
+* publish parameters
+** parameters can be arrays, so do a 2D array like internally
+*** Store in the Tersoff class the Array2Ds for every published
+    parameter, managing their own memory
+*** on init, read into published parameter memory (published by
+    setm_data()) and call a prepare_params method (see last sub-point)
+*** on reinit, call a prepare_params method (see last sub-point)
+*** prepare_params method: transfer published parameters into internal
+    storage, compute derived parameters, publish maximum cutoff
+    [public method]
+
+* CLUSTER is buggy and only gives zero/NaN energies.
+
+* MI_OPBC_F
+
+* optimize (e.g. c²/d² is calculated over and over again)
+** benchmark against LAMMPS native impl.
+
+* run several tests to compare to LAMMPS and verify stuff...
+** energies and forces seem good, see ~/Desktop/KCC/lammps-ref/buncha
+** also run the derivative test
+
+* plug into LAMMPS (works easily out of the box!!!)
+
+* README

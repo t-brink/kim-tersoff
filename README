@@ -1,0 +1,11 @@
+This model driver is based on the LAMMPS implementation of the Tersoff
+potential.
+
+For information about the parameter file and the form of the potential
+see http://lammps.sandia.gov/doc/pair_tersoff.html for now.
+
+The core part of energy/force calculation is adapted from code in
+LAMMPS.  LAMMPS is licensed under GPLv2, which then also applies to
+the whole model driver.  See the LICENSE file for details.
+
+Author: Tobias Brink <brink@mm.tu-darmstadt.de>
