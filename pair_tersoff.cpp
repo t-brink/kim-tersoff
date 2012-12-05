@@ -86,7 +86,7 @@ void PairTersoff::compute(KIM_API_model& kim_model,
   int n_neigh;     // Number of neighbors of i.
   int* neighbors;  // The indices of the neighbors.
   double* distvec; // Rij vectors.
-  const int eflag = energy || atom_energy; // Calculate energy?
+  const bool eflag = energy || atom_energy; // Calculate energy?
 
   // If requested, reset energy.
   if (energy)
@@ -190,6 +190,8 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       const double cutsq = params(itype,jtype,jtype).cutsq;
       if (rsq_ij > cutsq) continue;
 
+      const double r_ij = sqrt(rsq_ij);
+
       // two-body interactions, skip half of them
 
       if (i < j) {
@@ -198,9 +200,9 @@ void PairTersoff::compute(KIM_API_model& kim_model,
         const double R = params(itype,jtype,jtype).R;
         const double D = params(itype,jtype,jtype).D;
 
-        double fpair, evdwl;
-
-        repulsive(rsq_ij,lam1,A,R,D,fpair,eflag,evdwl);
+        double evdwl;
+        const double fpair =
+          repulsive(r_ij,lam1,A,R,D,eflag,evdwl);
 
         if (energy)
           *energy += evdwl;
@@ -250,6 +252,8 @@ void PairTersoff::compute(KIM_API_model& kim_model,
         const double cutsq = params(itype,jtype,ktype).cutsq;
         if (rsq_ik > cutsq) continue;
 
+        const double r_ik = sqrt(rsq_ik);
+
         const int m = params(itype,jtype,ktype).m;
         const double lam3 = params(itype,jtype,ktype).lam3;
         const double R = params(itype,jtype,ktype).R;
@@ -259,7 +263,7 @@ void PairTersoff::compute(KIM_API_model& kim_model,
         const double d = params(itype,jtype,ktype).d;
         const double h = params(itype,jtype,ktype).h;
 
-        zeta_ij += zeta(rsq_ij,rsq_ik,m,lam3,R,D,gamma,c,d,h,delr_ij,delr_ik);
+        zeta_ij += zeta(r_ij,r_ik,m,lam3,R,D,gamma,c,d,h,delr_ij,delr_ik);
       }
 
       // pairwise force due to zeta
@@ -271,9 +275,10 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       const double beta = params(itype,jtype,jtype).beta;
       const double n = params(itype,jtype,jtype).n;
 
-      double prefactor; // -0.5 * fa * ∇bij
-      double fpair, evdwl;
-      force_zeta(rsq_ij,zeta_ij,B,lam2,R,D,beta,n,fpair,prefactor,eflag,evdwl);
+      double prefactor, // -0.5 * fa * ∇bij
+             evdwl;     // Particle energy.
+      const double fpair =
+        force_zeta(r_ij,zeta_ij,B,lam2,R,D,beta,n,prefactor,eflag,evdwl);
 
       if (energy)
         *energy += evdwl;
@@ -317,6 +322,8 @@ void PairTersoff::compute(KIM_API_model& kim_model,
         const double cutsq = params(itype,jtype,ktype).cutsq;
         if (rsq_ik > cutsq) continue;
 
+        const double r_ik = sqrt(rsq_ik);
+
         const double R = params(itype,jtype,ktype).R;
         const double D = params(itype,jtype,ktype).D;
         const int m = params(itype,jtype,ktype).m;
@@ -328,7 +335,7 @@ void PairTersoff::compute(KIM_API_model& kim_model,
 
         double fi[3], fj[3], fk[3];
 
-        attractive(prefactor, rsq_ij, rsq_ik,
+        attractive(prefactor, r_ij, r_ik,
                    R, D, m, lam3, gamma, c, d, h,
                    delr_ij, delr_ik, fi, fj, fk);
 
@@ -511,91 +518,36 @@ void PairTersoff::read_params(istream& infile, std::map<string,int> type_map,
       throw runtime_error("Not all interactions were set!");
   }
 
-
 /* ---------------------------------------------------------------------- */
 
-void PairTersoff::setup()
+double PairTersoff::repulsive(double r,
+                              double lam1, double A, double R, double D,
+                              bool eflag, double &eng)
 {
-  //int i,j,k,m,n;
-
-  // set elem2param for all element triplet combinations
-  // must be a single exact match to lines read from file
-  // do not allow for ACB in place of ABC
-
-/*
-  memory->destroy(elem2param);
-  memory->create(elem2param,nelements,nelements,nelements,"pair:elem2param");
-
-  for (i = 0; i < nelements; i++)
-    for (j = 0; j < nelements; j++)
-      for (k = 0; k < nelements; k++) {
-        n = -1;
-        for (m = 0; m < nparams; m++) {
-          if (i == params[m].ielement && j == params[m].jelement &&
-              k == params[m].kelement) {
-            if (n >= 0) error->all(FLERR,"Potential file has duplicate entry");
-            n = m;
-          }
-        }
-        if (n < 0) error->all(FLERR,"Potential file is missing an entry");
-        elem2param[i][j][k] = n;
-      }
-*/
-
-  // compute parameter values derived from inputs
-/*
-  for (int m = 0; m < nparams; m++) {
-    params_[m].cut = params_[m].bigr + params_[m].bigd;
-    params_[m].cutsq = params_[m].cut*params_[m].cut;
-
-    params_[m].c1 = pow(2.0*params_[m].powern*1.0e-16,-1.0/params_[m].powern);
-    params_[m].c2 = pow(2.0*params_[m].powern*1.0e-8,-1.0/params_[m].powern);
-    params_[m].c3 = 1.0/params_[m].c2;
-    params_[m].c4 = 1.0/params_[m].c1;
-  }
-
-  // set cutmax to max of all params
-
-  cutmax = 0.0;
-  for (int m = 0; m < nparams; m++)
-    if (params_[m].cut > cutmax) cutmax = params_[m].cut;
-*/
-}
-
-/* ---------------------------------------------------------------------- */
-
-void PairTersoff::repulsive(double rsq,
-                            double lam1, double A, double R, double D,
-                            double &fforce,
-                            int eflag, double &eng)
-{
-  double r,tmp_fc,tmp_fc_d,tmp_exp;
-
-  r = sqrt(rsq);
-  tmp_fc = ters_fc(r, R, D);
-  tmp_fc_d = ters_fc_d(r, R, D);
-  tmp_exp = exp(-lam1 * r);
-  fforce = -A * tmp_exp * (tmp_fc_d - tmp_fc*lam1) / r;
+  const double tmp_fc = ters_fc(r, R, D);
+  const double tmp_fc_d = ters_fc_d(r, R, D);
+  const double tmp_exp = exp(-lam1 * r);
   if (eflag) eng = tmp_fc * A * tmp_exp;
+  return -A * tmp_exp * (tmp_fc_d - tmp_fc*lam1) / r;
 }
 
 /* ---------------------------------------------------------------------- */
 
-double PairTersoff::zeta(double rsqij, double rsqik,
+double PairTersoff::zeta(double rij, double rik,
                          int m, double lam3, double R, double D,
                          double gamma, double c, double d, double h,
-                         double *delrij, double *delrik)
+                         double* delrij, double* delrik)
 {
-  double rij,rik,costheta,arg,ex_delr;
+  const double costheta = (delrij[0]*delrik[0]
+                           + delrij[1]*delrik[1]
+                           + delrij[2]*delrik[2]
+                           ) / (rij * rik);
 
-  rij = sqrt(rsqij);
-  rik = sqrt(rsqik);
-  costheta = (delrij[0]*delrik[0] + delrij[1]*delrik[1] +
-              delrij[2]*delrik[2]) / (rij*rik);
-
+  double arg;
   if (m == 3) arg = pow(lam3 * (rij-rik), 3.0);
   else arg = lam3 * (rij-rik); // m == 1
 
+  double ex_delr;
   if (arg > 69.0776) ex_delr = 1.e30;
   else if (arg < -69.0776) ex_delr = 0.0;
   else ex_delr = exp(arg);
@@ -605,21 +557,18 @@ double PairTersoff::zeta(double rsqij, double rsqik,
 
 /* ---------------------------------------------------------------------- */
 
-void PairTersoff::force_zeta(double rsq, double zeta_ij,
-                             double B, double lam2, double R, double D,
-                             double beta, double n,
-                             double &fforce, double &prefactor,
-                             int eflag, double &eng)
+double PairTersoff::force_zeta(double r, double zeta_ij,
+                               double B, double lam2, double R, double D,
+                               double beta, double n,
+                               double &prefactor,
+                               bool eflag, double &eng)
 {
-  double r,fa,fa_d,bij;
-
-  r = sqrt(rsq);
-  fa = ters_fa(r, B, lam2, R, D);
-  fa_d = ters_fa_d(r, B, lam2, R, D);
-  bij = ters_bij(zeta_ij, beta, n);
-  fforce = 0.5*bij*fa_d / r;
+  const double fa = ters_fa(r, B, lam2, R, D);
+  const double fa_d = ters_fa_d(r, B, lam2, R, D);
+  const double bij = ters_bij(zeta_ij, beta, n);
   prefactor = -0.5*fa * ters_bij_d(zeta_ij, beta, n);
   if (eflag) eng = 0.5*bij*fa;
+  return 0.5*bij*fa_d / r;
 }
 
 /* ----------------------------------------------------------------------
@@ -629,22 +578,17 @@ void PairTersoff::force_zeta(double rsq, double zeta_ij,
 ------------------------------------------------------------------------- */
 
 void PairTersoff::attractive(double prefactor,
-                             double rsqij, double rsqik,
+                             double rij, double rik,
                              double R, double D, int m, double lam3,
                              double gamma, double c, double d, double h,
                              double *delrij, double *delrik,
                              double *fi, double *fj, double *fk)
 {
-  double rij_hat[3],rik_hat[3];
-  double rij,rijinv,rik,rikinv;
+  double rij_hat[3];
+  vec3_scale(1.0/rij, delrij, rij_hat); // rij_hat = delrij / rij
 
-  rij = sqrt(rsqij);
-  rijinv = 1.0/rij;
-  vec3_scale(rijinv,delrij,rij_hat);
-
-  rik = sqrt(rsqik);
-  rikinv = 1.0/rik;
-  vec3_scale(rikinv,delrik,rik_hat);
+  double rik_hat[3];
+  vec3_scale(1.0/rik, delrik, rik_hat); // rik_hat = delrik / rik
 
   ters_zetaterm_d(prefactor,
                   R, D, m, lam3, gamma, c, d, h,

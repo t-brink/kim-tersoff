@@ -88,10 +88,6 @@ class PairTersoff /*: public Pair*/ {
                        Array2D<double>*);
   void read_params(std::istream&, std::map<std::string,int>,
                    double, double, double);
-  //void settings(int, char **);
-  //void coeff(int, char **);
-  //void init_style();
-  //double init_one(int, int);
   double cutoff() const {
     return max_cutoff;
   }
@@ -112,28 +108,22 @@ class PairTersoff /*: public Pair*/ {
 
   int n_spec;
   Array3D<Params> params;
-  //char **elements;              // names of unique elements
-  //int ***elem2param;            // mapping from element triplets to parameters
-  //int *map;                     // mapping from atom types to elements
   double cutmax;                // max cutoff for all elements
   double max_cutoff;
   int nelements;                // # of unique elements
   int nparams;                  // # of stored parameter sets
   int maxparam;                 // max # of parameter sets
 
-  //void allocate();
-  //virtual void read_file(char *);
-  void setup();
-  virtual void repulsive(double, double, double, double, double,
-                         double&, int, double&);
+  double repulsive(double, double, double, double, double,
+                   bool, double&);
   double zeta(double, double,
               int, double, double, double,
               double, double, double, double,
               double*, double*);
-  virtual void force_zeta(double, double,
-                          double, double, double, double,
-                          double, double,
-                          double&, double&, int, double&);
+  double force_zeta(double, double,
+                    double, double, double, double,
+                    double, double,
+                    double&, bool, double&);
   void attractive(double, double, double,
                   double, double, int, double,
                   double, double, double, double,
@@ -142,8 +132,8 @@ class PairTersoff /*: public Pair*/ {
 
   double ters_fc(double, double, double);
   double ters_fc_d(double, double, double);
-  virtual double ters_fa(double, double,double,double,double);
-  virtual double ters_fa_d(double, double,double,double,double);
+  double ters_fa(double, double,double,double,double);
+  double ters_fa_d(double, double,double,double,double);
   double ters_bij(double, double, double);
   double ters_bij_d(double, double, double);
 
