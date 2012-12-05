@@ -260,8 +260,11 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       zeta_ij = 0.0;
 
       for (int kk = 0; kk != n_neigh; ++kk) {
-        if (jj == kk) continue; // TODO: This should suffice, but does it?
+        if (jj == kk) continue;
         int k = use_neighbor_list ? neighbors[kk] : kk;
+        if (i == k) continue; // Needed in cluster mode, as there is
+                              // no neighbor list which will make sure
+                              // i = k doesn't happen!
         ktype = atom_types[k];
         //iparam_ijk = elem2param[itype][jtype][ktype];
 
@@ -327,8 +330,11 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       // TODO: restart a loop again?? why?
 
       for (int kk = 0; kk != n_neigh; ++kk) {
-        if (jj == kk) continue; // TODO: This should suffice, but does it?
+        if (jj == kk) continue;
         int k = use_neighbor_list ? neighbors[kk] : kk;
+        if (i == k) continue; // Needed in cluster mode, as there is
+                              // no neighbor list which will make sure
+                              // i = k doesn't happen!
         ktype = atom_types[k];
         //iparam_ijk = elem2param[itype][jtype][ktype];
 
