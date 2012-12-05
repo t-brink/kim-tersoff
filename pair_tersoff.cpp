@@ -83,11 +83,9 @@ void PairTersoff::compute(KIM_API_model& kim_model,
 {
   int ii;
   int itype,jtype,ktype; // TODO: move in-loop
-  double xtmp,ytmp,ztmp,delx,dely,delz,evdwl,fpair;
-  double rsq,rsq1,rsq2;
-  double delr1[3],delr2[3],fi[3],fj[3],fk[3];
+  double xtmp,ytmp,ztmp,evdwl,fpair;
+  double fi[3],fj[3],fk[3];
   double zeta_ij,prefactor;
-  //int *ilist,*jlist,*numneigh,**firstneigh;
   int error;
   int n_neigh; // number of neighbors of i
   int* neighbors; // the indices of the neighbors
@@ -180,19 +178,22 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       if (i == j) continue;
       jtype = atom_types[j];
 
+      double delr_ij[3];
       if (distvec) {
-        delx = -distvec[jj*3 + 0]; // KIM outputs x_j - x_i, this code wants
-        dely = -distvec[jj*3 + 1]; // x_i - x_j.
-        delz = -distvec[jj*3 + 2];
+        delr_ij[0] = distvec[jj*3 + 0];
+        delr_ij[1] = distvec[jj*3 + 1];
+        delr_ij[2] = distvec[jj*3 + 2];
       } else {
-        delx = xtmp - atom_coords(j,0);
-        dely = ytmp - atom_coords(j,1);
-        delz = ztmp - atom_coords(j,2);
+        delr_ij[0] = atom_coords(j,0) - xtmp;
+        delr_ij[1] = atom_coords(j,1) - ytmp;
+        delr_ij[2] = atom_coords(j,2) - ztmp;
       }
-      rsq = delx*delx + dely*dely + delz*delz;
+      const double rsq_ij = delr_ij[0]*delr_ij[0]
+                          + delr_ij[1]*delr_ij[1]
+                          + delr_ij[2]*delr_ij[2];
 
       const double cutsq = params(itype,jtype,jtype).cutsq;
-      if (rsq > cutsq) continue;
+      if (rsq_ij > cutsq) continue;
 
       // two-body interactions, skip half of them
 
@@ -201,7 +202,7 @@ void PairTersoff::compute(KIM_API_model& kim_model,
         const double A = params(itype,jtype,jtype).A;
         const double R = params(itype,jtype,jtype).R;
         const double D = params(itype,jtype,jtype).D;
-        repulsive(rsq,lam1,A,R,D,fpair,eflag,evdwl);
+        repulsive(rsq_ij,lam1,A,R,D,fpair,eflag,evdwl);
 
         if (energy)
           *energy += evdwl;
@@ -212,27 +213,16 @@ void PairTersoff::compute(KIM_API_model& kim_model,
         }
 
         if (forces) {
-          (*forces)(i,0) += delx*fpair;
-          (*forces)(i,1) += dely*fpair;
-          (*forces)(i,2) += delz*fpair;
-          (*forces)(j,0) -= delx*fpair;
-          (*forces)(j,1) -= dely*fpair;
-          (*forces)(j,2) -= delz*fpair;
+          (*forces)(i,0) -= delr_ij[0]*fpair;
+          (*forces)(i,1) -= delr_ij[1]*fpair;
+          (*forces)(i,2) -= delr_ij[2]*fpair;
+          (*forces)(j,0) += delr_ij[0]*fpair;
+          (*forces)(j,1) += delr_ij[1]*fpair;
+          (*forces)(j,2) += delr_ij[2]*fpair;
         }
       }
 
       // three-body interactions
-
-      if (distvec) {
-        delr1[0] = distvec[jj*3 + 0]; // Here delr = x_j - x_i as in KIM!?
-        delr1[1] = distvec[jj*3 + 1]; // TODO: above this seems to not matter,
-        delr1[2] = distvec[jj*3 + 2]; // so unify that.
-      } else {
-        delr1[0] = atom_coords(j,0) - xtmp;
-        delr1[1] = atom_coords(j,1) - ytmp;
-        delr1[2] = atom_coords(j,2) - ztmp;
-      }
-      rsq1 = delr1[0]*delr1[0] + delr1[1]*delr1[1] + delr1[2]*delr1[2];
 
       // accumulate bondorder zeta for each i-j interaction via loop over k
 
@@ -245,20 +235,22 @@ void PairTersoff::compute(KIM_API_model& kim_model,
                               // no neighbor list which will make sure
                               // i = k doesn't happen!
         ktype = atom_types[k];
-        //iparam_ijk = elem2param[itype][jtype][ktype];
 
+        double delr_ik[3];
         if (distvec) {
-          delr2[0] = distvec[kk*3 + 0];
-          delr2[1] = distvec[kk*3 + 1];
-          delr2[2] = distvec[kk*3 + 2];
+          delr_ik[0] = distvec[kk*3 + 0];
+          delr_ik[1] = distvec[kk*3 + 1];
+          delr_ik[2] = distvec[kk*3 + 2];
         } else {
-          delr2[0] = atom_coords(k,0) - xtmp;
-          delr2[1] = atom_coords(k,1) - ytmp;
-          delr2[2] = atom_coords(k,2) - ztmp;
+          delr_ik[0] = atom_coords(k,0) - xtmp;
+          delr_ik[1] = atom_coords(k,1) - ytmp;
+          delr_ik[2] = atom_coords(k,2) - ztmp;
         }
-        rsq2 = delr2[0]*delr2[0] + delr2[1]*delr2[1] + delr2[2]*delr2[2];
+        const double rsq_ik = delr_ik[0]*delr_ik[0]
+                            + delr_ik[1]*delr_ik[1]
+                            + delr_ik[2]*delr_ik[2];
         const double cutsq = params(itype,jtype,ktype).cutsq;
-        if (rsq2 > cutsq) continue;
+        if (rsq_ik > cutsq) continue;
 
         const int m = params(itype,jtype,ktype).m;
         const double lam3 = params(itype,jtype,ktype).lam3;
@@ -269,7 +261,7 @@ void PairTersoff::compute(KIM_API_model& kim_model,
         const double d = params(itype,jtype,ktype).d;
         const double h = params(itype,jtype,ktype).h;
 
-        zeta_ij += zeta(rsq1,rsq2,m,lam3,R,D,gamma,c,d,h,delr1,delr2);
+        zeta_ij += zeta(rsq_ij,rsq_ik,m,lam3,R,D,gamma,c,d,h,delr_ij,delr_ik);
       }
 
       // pairwise force due to zeta
@@ -281,7 +273,7 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       const double beta = params(itype,jtype,jtype).beta;
       const double n = params(itype,jtype,jtype).n;
 
-      force_zeta(rsq1,zeta_ij,B,lam2,R,D,beta,n,fpair,prefactor,eflag,evdwl);
+      force_zeta(rsq_ij,zeta_ij,B,lam2,R,D,beta,n,fpair,prefactor,eflag,evdwl);
 
       if (energy)
         *energy += evdwl;
@@ -291,18 +283,13 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       }
 
       if (forces) {
-        (*forces)(i,0) += delr1[0]*fpair;
-        (*forces)(i,1) += delr1[1]*fpair;
-        (*forces)(i,2) += delr1[2]*fpair;
-        (*forces)(j,0) -= delr1[0]*fpair;
-        (*forces)(j,1) -= delr1[1]*fpair;
-        (*forces)(j,2) -= delr1[2]*fpair;
+        (*forces)(i,0) += delr_ij[0]*fpair;
+        (*forces)(i,1) += delr_ij[1]*fpair;
+        (*forces)(i,2) += delr_ij[2]*fpair;
+        (*forces)(j,0) -= delr_ij[0]*fpair;
+        (*forces)(j,1) -= delr_ij[1]*fpair;
+        (*forces)(j,2) -= delr_ij[2]*fpair;
       }
-
-      /* TODO: What does that do????
-      if (evflag) ev_tally(i,j,nlocal,newton_pair,
-                           evdwl,0.0,-fpair,-delr1[0],-delr1[1],-delr1[2]);
-      */
 
       // attractive term via loop over k
 
@@ -315,20 +302,22 @@ void PairTersoff::compute(KIM_API_model& kim_model,
                               // no neighbor list which will make sure
                               // i = k doesn't happen!
         ktype = atom_types[k];
-        //iparam_ijk = elem2param[itype][jtype][ktype];
 
+        double delr_ik[3];
         if (distvec) {
-          delr2[0] = distvec[kk*3 + 0];
-          delr2[1] = distvec[kk*3 + 1];
-          delr2[2] = distvec[kk*3 + 2];
+          delr_ik[0] = distvec[kk*3 + 0];
+          delr_ik[1] = distvec[kk*3 + 1];
+          delr_ik[2] = distvec[kk*3 + 2];
         } else {
-          delr2[0] = atom_coords(k,0) - xtmp;
-          delr2[1] = atom_coords(k,1) - ytmp;
-          delr2[2] = atom_coords(k,2) - ztmp;
+          delr_ik[0] = atom_coords(k,0) - xtmp;
+          delr_ik[1] = atom_coords(k,1) - ytmp;
+          delr_ik[2] = atom_coords(k,2) - ztmp;
         }
-        rsq2 = delr2[0]*delr2[0] + delr2[1]*delr2[1] + delr2[2]*delr2[2];
+        const double rsq_ik = delr_ik[0]*delr_ik[0]
+                            + delr_ik[1]*delr_ik[1]
+                            + delr_ik[2]*delr_ik[2];
         const double cutsq = params(itype,jtype,ktype).cutsq;
-        if (rsq2 > cutsq) continue;
+        if (rsq_ik > cutsq) continue;
 
         const double R = params(itype,jtype,ktype).R;
         const double D = params(itype,jtype,ktype).D;
@@ -339,9 +328,9 @@ void PairTersoff::compute(KIM_API_model& kim_model,
         const double d = params(itype,jtype,ktype).d;
         const double h = params(itype,jtype,ktype).h;
 
-        attractive(prefactor, rsq1, rsq2,
+        attractive(prefactor, rsq_ij, rsq_ik,
                    R, D, m, lam3, gamma, c, d, h,
-                   delr1, delr2, fi, fj, fk);
+                   delr_ij, delr_ik, fi, fj, fk);
 
         if (forces) {
           (*forces)(i,0) += fi[0];
@@ -355,16 +344,9 @@ void PairTersoff::compute(KIM_API_model& kim_model,
           (*forces)(k,2) += fk[2];
         }
 
-        /* TODO: what is this??? do we need it?
-        if (vflag_atom) v_tally3(i,j,k,fj,fk,delr1,delr2);
-        */
       }
     }
   }
-
-  /* TODO: Do we need that???  I guess no.
-  if (vflag_fdotr) virial_fdotr_compute();
-  */
 }
 
 /* ---------------------------------------------------------------------- */
