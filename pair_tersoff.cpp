@@ -544,7 +544,7 @@ double PairTersoff::zeta(double rij, double rik,
                            ) / (rij * rik);
 
   double arg;
-  if (m == 3) arg = pow(lam3 * (rij-rik), 3.0);
+  if (m == 3) arg = pow(lam3 * (rij-rik), 3);
   else arg = lam3 * (rij-rik); // m == 1
 
   double ex_delr;
@@ -681,7 +681,7 @@ void PairTersoff::ters_zetaterm_d(double prefactor,
 
   fc = ters_fc(rik,R,D);
   dfc = ters_fc_d(rik,R,D);
-  if (m == 3) tmp = pow(lam3 * (rij-rik),3.0);
+  if (m == 3) tmp = pow(lam3 * (rij-rik), 3);
   else tmp = lam3 * (rij-rik); // m == 1
 
   if (tmp > 69.0776) ex_delr = 1.e30;
@@ -689,7 +689,7 @@ void PairTersoff::ters_zetaterm_d(double prefactor,
   else ex_delr = exp(tmp);
 
   if (m == 3)
-    ex_delr_d = 3.0*pow(lam3, 3.0) * pow(rij-rik,2.0)*ex_delr;
+    ex_delr_d = 3.0*pow(lam3, 3) * pow(rij-rik, 2)*ex_delr;
   else ex_delr_d = lam3 * ex_delr; // m == 1
 
   cos_theta = vec3_dot(rij_hat,rik_hat);
