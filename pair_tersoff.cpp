@@ -81,18 +81,12 @@ void PairTersoff::compute(KIM_API_model& kim_model,
                           double* energy, double* atom_energy,
                           Array2D<double>* forces)
 {
-  int ii;
-  int itype,jtype,ktype; // TODO: move in-loop
-  double xtmp,ytmp,ztmp,evdwl,fpair;
-  double fi[3],fj[3],fk[3];
-  double zeta_ij,prefactor;
-  int error;
-  int n_neigh; // number of neighbors of i
-  int* neighbors; // the indices of the neighbors
-  double* distvec; // Rij vectors
-
-  //TODO: figure this thing out.
-  const static int eflag = 1;
+  int ii;          // Iteration over all atoms.
+  int error;       // KIM error code.
+  int n_neigh;     // Number of neighbors of i.
+  int* neighbors;  // The indices of the neighbors.
+  double* distvec; // Rij vectors.
+  const int eflag = energy || atom_energy; // Calculate energy?
 
   // If requested, reset energy.
   if (energy)
@@ -166,7 +160,8 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       ++ii;
     }
 
-    itype = atom_types[i];
+    const int itype = atom_types[i];
+    double xtmp, ytmp, ztmp;
     if (!distvec) {
       xtmp = atom_coords(i,0);
       ytmp = atom_coords(i,1);
@@ -176,7 +171,7 @@ void PairTersoff::compute(KIM_API_model& kim_model,
     for (int jj = 0; jj != n_neigh; ++jj) {
       int j = use_neighbor_list ? neighbors[jj] : jj;
       if (i == j) continue;
-      jtype = atom_types[j];
+      const int jtype = atom_types[j];
 
       double delr_ij[3];
       if (distvec) {
@@ -202,6 +197,9 @@ void PairTersoff::compute(KIM_API_model& kim_model,
         const double A = params(itype,jtype,jtype).A;
         const double R = params(itype,jtype,jtype).R;
         const double D = params(itype,jtype,jtype).D;
+
+        double fpair, evdwl;
+
         repulsive(rsq_ij,lam1,A,R,D,fpair,eflag,evdwl);
 
         if (energy)
@@ -226,7 +224,7 @@ void PairTersoff::compute(KIM_API_model& kim_model,
 
       // accumulate bondorder zeta for each i-j interaction via loop over k
 
-      zeta_ij = 0.0;
+      double zeta_ij = 0.0;
 
       for (int kk = 0; kk != n_neigh; ++kk) {
         if (jj == kk) continue;
@@ -234,7 +232,7 @@ void PairTersoff::compute(KIM_API_model& kim_model,
         if (i == k) continue; // Needed in cluster mode, as there is
                               // no neighbor list which will make sure
                               // i = k doesn't happen!
-        ktype = atom_types[k];
+        const int ktype = atom_types[k];
 
         double delr_ik[3];
         if (distvec) {
@@ -273,6 +271,8 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       const double beta = params(itype,jtype,jtype).beta;
       const double n = params(itype,jtype,jtype).n;
 
+      double prefactor; // -0.5 * fa * ∇bij
+      double fpair, evdwl;
       force_zeta(rsq_ij,zeta_ij,B,lam2,R,D,beta,n,fpair,prefactor,eflag,evdwl);
 
       if (energy)
@@ -293,15 +293,13 @@ void PairTersoff::compute(KIM_API_model& kim_model,
 
       // attractive term via loop over k
 
-      // TODO: restart a loop again?? why?
-
       for (int kk = 0; kk != n_neigh; ++kk) {
         if (jj == kk) continue;
         int k = use_neighbor_list ? neighbors[kk] : kk;
         if (i == k) continue; // Needed in cluster mode, as there is
                               // no neighbor list which will make sure
                               // i = k doesn't happen!
-        ktype = atom_types[k];
+        const int ktype = atom_types[k];
 
         double delr_ik[3];
         if (distvec) {
@@ -327,6 +325,8 @@ void PairTersoff::compute(KIM_API_model& kim_model,
         const double c = params(itype,jtype,ktype).c;
         const double d = params(itype,jtype,ktype).d;
         const double h = params(itype,jtype,ktype).h;
+
+        double fi[3], fj[3], fk[3];
 
         attractive(prefactor, rsq_ij, rsq_ik,
                    R, D, m, lam3, gamma, c, d, h,
