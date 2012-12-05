@@ -120,8 +120,8 @@ class PairTersoff /*: public Pair*/ {
               int, double, double, double,
               double, double, double, double,
               double*, double*);
-  double force_zeta(double, double,
-                    double, double, double, double,
+  double force_zeta(double, double, double, double,
+                    double, double,
                     double, double,
                     double&, bool, double&);
   void attractive(double, double, double,
@@ -132,8 +132,8 @@ class PairTersoff /*: public Pair*/ {
 
   double ters_fc(double, double, double);
   double ters_fc_d(double, double, double);
-  double ters_fa(double, double,double,double,double);
-  double ters_fa_d(double, double,double,double,double);
+  double ters_fa(double, double, double, double);
+  double ters_fa_d(double, double, double, double, double);
   double ters_bij(double, double, double);
   double ters_bij_d(double, double, double);
 

@@ -192,17 +192,20 @@ void PairTersoff::compute(KIM_API_model& kim_model,
 
       const double r_ij = sqrt(rsq_ij);
 
+      const double R = params(itype,jtype,jtype).R;
+      const double D = params(itype,jtype,jtype).D;
+      const double fc_ij = ters_fc(r_ij, R, D); // Value of the cutoff function.
+      const double dfc_ij = ters_fc_d(r_ij, R, D); // Derivative of fc_ij.
+
       // two-body interactions, skip half of them
 
       if (i < j) {
         const double lam1 = params(itype,jtype,jtype).lam1;
         const double A = params(itype,jtype,jtype).A;
-        const double R = params(itype,jtype,jtype).R;
-        const double D = params(itype,jtype,jtype).D;
 
         double evdwl;
         const double fpair =
-          repulsive(r_ij,lam1,A,R,D,eflag,evdwl);
+          repulsive(r_ij, fc_ij, dfc_ij, lam1, A, eflag, evdwl);
 
         if (energy)
           *energy += evdwl;
@@ -270,15 +273,14 @@ void PairTersoff::compute(KIM_API_model& kim_model,
 
       const double B = params(itype,jtype,jtype).B;
       const double lam2 = params(itype,jtype,jtype).lam2;
-      const double R = params(itype,jtype,jtype).R;
-      const double D = params(itype,jtype,jtype).D;
       const double beta = params(itype,jtype,jtype).beta;
       const double n = params(itype,jtype,jtype).n;
 
       double prefactor, // -0.5 * fa * ∇bij
              evdwl;     // Particle energy.
       const double fpair =
-        force_zeta(r_ij,zeta_ij,B,lam2,R,D,beta,n,prefactor,eflag,evdwl);
+        force_zeta(r_ij, fc_ij, dfc_ij, zeta_ij, B, lam2, beta, n,
+                   prefactor, eflag, evdwl);
 
       if (energy)
         *energy += evdwl;
@@ -520,15 +522,13 @@ void PairTersoff::read_params(istream& infile, std::map<string,int> type_map,
 
 /* ---------------------------------------------------------------------- */
 
-double PairTersoff::repulsive(double r,
-                              double lam1, double A, double R, double D,
+double PairTersoff::repulsive(double r, double fc, double fc_d,
+                              double lam1, double A,
                               bool eflag, double &eng)
 {
-  const double tmp_fc = ters_fc(r, R, D);
-  const double tmp_fc_d = ters_fc_d(r, R, D);
   const double tmp_exp = exp(-lam1 * r);
-  if (eflag) eng = tmp_fc * A * tmp_exp;
-  return -A * tmp_exp * (tmp_fc_d - tmp_fc*lam1) / r;
+  if (eflag) eng = fc * A * tmp_exp;
+  return -A * tmp_exp * (fc_d - fc*lam1) / r;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -557,14 +557,14 @@ double PairTersoff::zeta(double rij, double rik,
 
 /* ---------------------------------------------------------------------- */
 
-double PairTersoff::force_zeta(double r, double zeta_ij,
-                               double B, double lam2, double R, double D,
+double PairTersoff::force_zeta(double r, double fc, double fc_d, double zeta_ij,
+                               double B, double lam2,
                                double beta, double n,
                                double &prefactor,
                                bool eflag, double &eng)
 {
-  const double fa = ters_fa(r, B, lam2, R, D);
-  const double fa_d = ters_fa_d(r, B, lam2, R, D);
+  const double fa = ters_fa(r, fc, B, lam2);
+  const double fa_d = ters_fa_d(r, fc, fc_d, B, lam2);
   const double bij = ters_bij(zeta_ij, beta, n);
   prefactor = -0.5*fa * ters_bij_d(zeta_ij, beta, n);
   if (eflag) eng = 0.5*bij*fa;
@@ -615,21 +615,20 @@ double PairTersoff::ters_fc_d(double r, double R, double D)
 
 /* ---------------------------------------------------------------------- */
 
-double PairTersoff::ters_fa(double r,
-                            double B, double lam2, double R, double D)
+double PairTersoff::ters_fa(double r, double fc,
+                            double B, double lam2)
 {
-  if (r > R + D) return 0.0;
-  return -B * exp(-lam2 * r) * ters_fc(r,R,D);
+  if (fc == 0.0) return 0.0;
+  return -B * exp(-lam2 * r) * fc;
 }
 
 /* ---------------------------------------------------------------------- */
 
-double PairTersoff::ters_fa_d(double r,
-                              double B, double lam2, double R, double D)
+double PairTersoff::ters_fa_d(double r, double fc, double fc_d,
+                              double B, double lam2)
 {
-  if (r > R + D) return 0.0;
-  return B * exp(-lam2 * r) *
-    (lam2 * ters_fc(r, R, D) - ters_fc_d(r, R, D));
+  if (fc == 0.0) return 0.0;
+  return B * exp(-lam2 * r) * (lam2 * fc - fc_d);
 }
 
 /* ---------------------------------------------------------------------- */
