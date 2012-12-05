@@ -13,8 +13,6 @@
     storage, compute derived parameters, publish maximum cutoff
     [public method]
 
-* CLUSTER is buggy and only gives zero/NaN energies.
-
 * MI_OPBC_F
 
 * optimize (e.g. c²/d² is calculated over and over again)

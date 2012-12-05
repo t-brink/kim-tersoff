@@ -175,18 +175,9 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       ztmp = atom_coords(i,2);
     }
 
-    // two-body interactions, skip half of them  (TODO: skip half???? --brink)
-
-    // TODO: Skip half here!  The two-body things can work with half
-    // neighbor lists, while the three-body terms can't, so they
-    // optimize here!  Perhaps combine with the next loop and skip on
-    // repulsive() and f[...] = ...; when i > j or something?  This
-    // seems more efficient!
-
     for (int jj = 0; jj != n_neigh; ++jj) {
       int j = use_neighbor_list ? neighbors[jj] : jj;
-      if (i >= j) // skip half
-        continue;
+      if (i == j) continue;
       jtype = atom_types[j];
 
       if (distvec) {
@@ -203,44 +194,34 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       const double cutsq = params(itype,jtype,jtype).cutsq;
       if (rsq > cutsq) continue;
 
-      const double lam1 = params(itype,jtype,jtype).lam1;
-      const double A = params(itype,jtype,jtype).A;
-      const double R = params(itype,jtype,jtype).R;
-      const double D = params(itype,jtype,jtype).D;
-      repulsive(rsq,lam1,A,R,D,fpair,eflag,evdwl);
+      // two-body interactions, skip half of them
 
-      if (energy)
-        *energy += evdwl;
+      if (i < j) {
+        const double lam1 = params(itype,jtype,jtype).lam1;
+        const double A = params(itype,jtype,jtype).A;
+        const double R = params(itype,jtype,jtype).R;
+        const double D = params(itype,jtype,jtype).D;
+        repulsive(rsq,lam1,A,R,D,fpair,eflag,evdwl);
 
-      if (atom_energy) {
-        atom_energy[i] += 0.5 * evdwl;
-        atom_energy[j] += 0.5 * evdwl;
+        if (energy)
+          *energy += evdwl;
+
+        if (atom_energy) {
+          atom_energy[i] += 0.5 * evdwl;
+          atom_energy[j] += 0.5 * evdwl;
+        }
+
+        if (forces) {
+          (*forces)(i,0) += delx*fpair;
+          (*forces)(i,1) += dely*fpair;
+          (*forces)(i,2) += delz*fpair;
+          (*forces)(j,0) -= delx*fpair;
+          (*forces)(j,1) -= dely*fpair;
+          (*forces)(j,2) -= delz*fpair;
+        }
       }
 
-      if (forces) {
-        (*forces)(i,0) += delx*fpair;
-        (*forces)(i,1) += dely*fpair;
-        (*forces)(i,2) += delz*fpair;
-        (*forces)(j,0) -= delx*fpair;
-        (*forces)(j,1) -= dely*fpair;
-        (*forces)(j,2) -= delz*fpair;
-      }
-
-      /* TODO: what does this do???
-      if (evflag) ev_tally(i,j,nlocal,newton_pair,
-                           evdwl,0.0,fpair,delx,dely,delz);
-      */
-    }
-
-    // three-body interactions
-    // skip immediately if I-J is not within cutoff
-
-    for (int jj = 0; jj != n_neigh; ++jj) {
-      int j = use_neighbor_list ? neighbors[jj] : jj;
-      if (i == j) // TODO: do we need this???? YES!
-        continue;
-      jtype = atom_types[j];
-      //iparam_ij = elem2param[itype][jtype][jtype];
+      // three-body interactions
 
       if (distvec) {
         delr1[0] = distvec[jj*3 + 0]; // Here delr = x_j - x_i as in KIM!?
@@ -252,8 +233,6 @@ void PairTersoff::compute(KIM_API_model& kim_model,
         delr1[2] = atom_coords(j,2) - ztmp;
       }
       rsq1 = delr1[0]*delr1[0] + delr1[1]*delr1[1] + delr1[2]*delr1[2];
-      const double cutsq = params(itype,jtype,jtype).cutsq;
-      if (rsq1 > cutsq) continue;
 
       // accumulate bondorder zeta for each i-j interaction via loop over k
 
