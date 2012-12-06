@@ -141,17 +141,19 @@ static int compute(KIM_API_model** kimmdl) {
 
   // Calculate values.
   try {
+    bool use_neighbor_list, use_distvec;
     switch (ki.nbc) {
     case KIM_CLUSTER:
-      tersoff->compute(kim_model, false, ki.neigh_access_mode,
-                       *n_atoms, atom_types, coord,
-                       energy, particle_energy, forces_ptr);
+      use_neighbor_list = false;
+      use_distvec = false;
       break;
     case KIM_NEIGH_PURE_F:
+      use_neighbor_list = true;
+      use_distvec = false;
+      break;
     case KIM_NEIGH_RVEC_F:
-      tersoff->compute(kim_model, true, ki.neigh_access_mode,
-                       *n_atoms, atom_types, coord,
-                       energy, particle_energy, forces_ptr);
+      use_neighbor_list = true;
+      use_distvec = true;
       break;
     default:
       kim_model.report_error(__LINE__, __FILE__,
@@ -159,6 +161,10 @@ static int compute(KIM_API_model** kimmdl) {
                              KIM_STATUS_FAIL);
       return KIM_STATUS_FAIL;
     }
+    tersoff->compute(kim_model, use_neighbor_list, use_distvec,
+                     ki.neigh_access_mode,
+                     *n_atoms, atom_types, coord,
+                     energy, particle_energy, forces_ptr);
   } catch (const exception& e) { // TODO: the const_cast is just
                                  // because of deficiencies in the KIM
                                  // API, which takes a char* instead

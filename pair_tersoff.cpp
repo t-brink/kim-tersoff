@@ -19,7 +19,7 @@
 
 #include "pair_tersoff.hpp"
 
-//#include <cmath>
+#include <cmath>
 //#include <cstdio>
 //#include <cstdlib>
 //#include <cstring>
@@ -74,6 +74,7 @@ PairTersoff::~PairTersoff()
 
 void PairTersoff::compute(KIM_API_model& kim_model,
                           bool use_neighbor_list, // false -> cluster
+                          bool use_distvec, // use rij array from neighbor list?
                           KIM_IterLoca access_mode,
                           int n_atoms, // Actual number of atoms
                           const int* atom_types,
@@ -174,7 +175,7 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       const int jtype = atom_types[j];
 
       double delr_ij[3];
-      if (distvec) {
+      if (use_distvec) {
         delr_ij[0] = distvec[jj*3 + 0];
         delr_ij[1] = distvec[jj*3 + 1];
         delr_ij[2] = distvec[jj*3 + 2];
@@ -240,7 +241,7 @@ void PairTersoff::compute(KIM_API_model& kim_model,
         const int ktype = atom_types[k];
 
         double delr_ik[3];
-        if (distvec) {
+        if (use_distvec) {
           delr_ik[0] = distvec[kk*3 + 0];
           delr_ik[1] = distvec[kk*3 + 1];
           delr_ik[2] = distvec[kk*3 + 2];
@@ -309,7 +310,7 @@ void PairTersoff::compute(KIM_API_model& kim_model,
         const int ktype = atom_types[k];
 
         double delr_ik[3];
-        if (distvec) {
+        if (use_distvec) {
           delr_ik[0] = distvec[kk*3 + 0];
           delr_ik[1] = distvec[kk*3 + 1];
           delr_ik[2] = distvec[kk*3 + 2];

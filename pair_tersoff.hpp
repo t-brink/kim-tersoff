@@ -83,9 +83,9 @@ class PairTersoff /*: public Pair*/ {
               const KimIndices& ki
               );
   virtual ~PairTersoff();
-  virtual void compute(KIM_API_model&, bool, KIM_IterLoca, int, const int*,
-                       const Array2D<double>&, double*, double*,
-                       Array2D<double>*);
+  void compute(KIM_API_model&, bool, bool, KIM_IterLoca,
+               int, const int*, const Array2D<double>&,
+               double*, double*, Array2D<double>*);
   void read_params(std::istream&, std::map<std::string,int>,
                    double, double, double);
   double cutoff() const {
