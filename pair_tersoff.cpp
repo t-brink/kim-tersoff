@@ -182,32 +182,30 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       const double fc_ij = ters_fc(r_ij, R, D); // Value of the cutoff function.
       const double dfc_ij = ters_fc_d(r_ij, R, D); // Derivative of fc_ij.
 
-      // two-body interactions, skip half of them
+      // two-body interactions
 
-      if (i < j) {
-        const double lam1 = params(itype,jtype,jtype).lam1;
-        const double A = params(itype,jtype,jtype).A;
+      const double lam1 = params(itype,jtype,jtype).lam1;
+      const double A = params(itype,jtype,jtype).A;
 
-        double evdwl;
-        const double fpair =
-          repulsive(r_ij, fc_ij, dfc_ij, lam1, A, eflag, evdwl);
+      double evdwl; // Particle energy.
+      const double fpair =
+        repulsive(r_ij, fc_ij, dfc_ij, lam1, A, eflag, evdwl);
 
-        if (energy)
-          *energy += evdwl;
+      if (energy)
+        *energy += 0.5 * evdwl;
 
-        if (atom_energy) {
-          atom_energy[i] += 0.5 * evdwl;
-          atom_energy[j] += 0.5 * evdwl;
-        }
+      if (atom_energy) {
+        atom_energy[i] += 0.25 * evdwl;
+        atom_energy[j] += 0.25 * evdwl;
+      }
 
-        if (forces) {
-          (*forces)(i,0) -= delr_ij[0]*fpair;
-          (*forces)(i,1) -= delr_ij[1]*fpair;
-          (*forces)(i,2) -= delr_ij[2]*fpair;
-          (*forces)(j,0) += delr_ij[0]*fpair;
-          (*forces)(j,1) += delr_ij[1]*fpair;
-          (*forces)(j,2) += delr_ij[2]*fpair;
-        }
+      if (forces) {
+        (*forces)(i,0) -= 0.5 * delr_ij[0]*fpair;
+        (*forces)(i,1) -= 0.5 * delr_ij[1]*fpair;
+        (*forces)(i,2) -= 0.5 * delr_ij[2]*fpair;
+        (*forces)(j,0) += 0.5 * delr_ij[0]*fpair;
+        (*forces)(j,1) += 0.5 * delr_ij[1]*fpair;
+        (*forces)(j,2) += 0.5 * delr_ij[2]*fpair;
       }
 
       // three-body interactions
@@ -261,9 +259,8 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       const double beta = params(itype,jtype,jtype).beta;
       const double n = params(itype,jtype,jtype).n;
 
-      double prefactor, // -0.5 * fa * ∇bij
-             evdwl;     // Particle energy.
-      const double fpair =
+      double prefactor; // -0.5 * fa * ∇bij
+      const double fzeta =
         force_zeta(r_ij, fc_ij, dfc_ij, zeta_ij, B, lam2, beta, n,
                    prefactor, eflag, evdwl);
 
@@ -275,12 +272,12 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       }
 
       if (forces) {
-        (*forces)(i,0) += delr_ij[0]*fpair;
-        (*forces)(i,1) += delr_ij[1]*fpair;
-        (*forces)(i,2) += delr_ij[2]*fpair;
-        (*forces)(j,0) -= delr_ij[0]*fpair;
-        (*forces)(j,1) -= delr_ij[1]*fpair;
-        (*forces)(j,2) -= delr_ij[2]*fpair;
+        (*forces)(i,0) += delr_ij[0]*fzeta;
+        (*forces)(i,1) += delr_ij[1]*fzeta;
+        (*forces)(i,2) += delr_ij[2]*fzeta;
+        (*forces)(j,0) -= delr_ij[0]*fzeta;
+        (*forces)(j,1) -= delr_ij[1]*fzeta;
+        (*forces)(j,2) -= delr_ij[2]*fzeta;
       }
 
       // attractive term via loop over k
