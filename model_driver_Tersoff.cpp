@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2012 Tobias Brink
+  Copyright (c) 2012,20132 Tobias Brink
 
   Permission is hereby granted, free of charge, to any person obtaining
   a copy of this software and associated documentation files (the
@@ -26,15 +26,10 @@
 #include <map>
 #include <set>
 #include <stdexcept>
-// DEBUG
-//#include <iostream>
-//#include <cstdio>
-// /DEBUG
 
 #include "KIM_API.h"
 #include "KIM_API_status.h"
 
-//#include "Tersoff.hpp"
 #include "pair_tersoff.hpp"
 #include "ndarray.hpp"
 
@@ -100,15 +95,22 @@ static int compute(KIM_API_model** kimmdl) {
     return error;
   }
 
-  // Get model input.
+  // Get model input and requested outputs.
   int* n_atoms;
   int* n_contrib;
   int* atom_types; // 1D array
   double* c;
-  kim_model.getm_data_by_index(&error, 3*3,
+  double* energy;
+  double* particle_energy;
+  double* f;
+  kim_model.getm_data_by_index(&error, 6*3,
                                ki.numberOfParticles, &n_atoms, 1,
                                ki.particleTypes, &atom_types, 1,
-                               ki.coordinates, &c, 1
+                               ki.coordinates, &c, 1,
+                               ki.energy, &energy, compute_energy,
+                               ki.particleEnergy, &particle_energy,
+                                                  compute_particleEnergy,
+                               ki.forces, &f, compute_forces
                                );
   if (error != KIM_STATUS_OK) {
     kim_model.report_error(__LINE__, __FILE__, "KIM_API_getm_data_by_index",
@@ -116,23 +118,7 @@ static int compute(KIM_API_model** kimmdl) {
     return error;
   }
   Array2D<double> coord(c, *n_atoms, 3);
-
-  // Get requested outputs.
-  // TODO: put this together with the above call to getm_data_by_index!!!!
-  double* energy;
-  double* particle_energy;
-  double* f;
-  kim_model.getm_data_by_index(&error, 3*3,
-                               ki.energy, &energy, compute_energy,
-                               ki.particleEnergy, &particle_energy,
-                                                  compute_particleEnergy,
-                               ki.forces, &f, compute_forces);
-  if (error != KIM_STATUS_OK) {
-    kim_model.report_error(__LINE__, __FILE__, "KIM_API_getm_data_by_index",
-                           error);
-    return error;
-  }
-  if (!compute_energy) //TODO: is this needed???
+  if (!compute_energy)
     energy = NULL;
   if (!compute_particleEnergy)
     particle_energy = NULL;

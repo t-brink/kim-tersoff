@@ -14,20 +14,14 @@
 /* ----------------------------------------------------------------------
    Contributing author: Aidan Thompson (SNL)
 
-   Modified for use with KIM by Tobias Brink (2012).
+   Modified for use with KIM by Tobias Brink (2012,2013).
 ------------------------------------------------------------------------- */
 
 #include "pair_tersoff.hpp"
 
 #include <cmath>
-//#include <cstdio>
-//#include <cstdlib>
-//#include <cstring>
 #include <fstream>
 #include <sstream>
-/* DEBUG * /
-#include <iostream>
-/ * END DEBUG */
 
 #include <KIM_API_status.h>
 
@@ -48,18 +42,8 @@ PairTersoff::PairTersoff(std::string parameter_file,
                          )
   : kim_indices(ki), n_spec(n_spec), params(n_spec, n_spec, n_spec)
 {
-  //cout << "Reading from: " << parameter_file << endl;
   std::fstream f(parameter_file.c_str(), std::ios_base::in);
   read_params(f, type_map, energy_conv, length_conv, inv_length_conv);
-  /*
-  cout << "n_spec = " << n_spec << endl;
-  for (int i = 0; i != n_spec; ++i)
-  for (int j = 0; j != n_spec; ++j)
-  for (int k = 0; k != n_spec; ++k) {
-    cout << " A " << i << "," << j << "," << k << " = " << params(i,j,k).A
-         << endl;
-  }
-  */
 }
 
 /* ----------------------------------------------------------------------
@@ -111,7 +95,7 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       kim_model.report_error(__LINE__, __FILE__,
                              "KIM_API_get_neigh (reset iterator)",
                              error);
-      throw runtime_error("compute_neigh_list: Error in KIM_API_get_neigh");
+      throw runtime_error("compute: Error in KIM_API_get_neigh");
     }
   } else { // cluster
     n_neigh = n_atoms;
@@ -154,7 +138,7 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       if (error != KIM_STATUS_OK) {
         kim_model.report_error(__LINE__, __FILE__, "KIM_API_get_neigh",
                                error);
-        throw runtime_error("compute_neigh_list: Error in KIM_API_get_neigh");
+        throw runtime_error("compute: Error in KIM_API_get_neigh");
       }
     } else {
       i = ii;
