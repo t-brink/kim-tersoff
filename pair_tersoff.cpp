@@ -195,17 +195,13 @@ void PairTersoff::compute(KIM_API_model& kim_model,
         *energy += 0.5 * evdwl;
 
       if (atom_energy) {
-        atom_energy[i] += 0.25 * evdwl;
-        atom_energy[j] += 0.25 * evdwl;
+        atom_energy[i] += 0.5 * evdwl;
       }
 
       if (forces) {
-        (*forces)(i,0) -= 0.5 * delr_ij[0]*fpair;
-        (*forces)(i,1) -= 0.5 * delr_ij[1]*fpair;
-        (*forces)(i,2) -= 0.5 * delr_ij[2]*fpair;
-        (*forces)(j,0) += 0.5 * delr_ij[0]*fpair;
-        (*forces)(j,1) += 0.5 * delr_ij[1]*fpair;
-        (*forces)(j,2) += 0.5 * delr_ij[2]*fpair;
+        (*forces)(i,0) -= delr_ij[0]*fpair;
+        (*forces)(i,1) -= delr_ij[1]*fpair;
+        (*forces)(i,2) -= delr_ij[2]*fpair;
       }
 
       // three-body interactions
@@ -259,10 +255,11 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       const double lam2 = params(itype,jtype,jtype).lam2;
       const double beta = params(itype,jtype,jtype).beta;
       const double n = params(itype,jtype,jtype).n;
+      const double* n_precomp = params(itype,jtype,jtype).n_precomp;
 
       double prefactor; // -0.5 * fa * ∇bij
       const double fzeta =
-        force_zeta(r_ij, fc_ij, dfc_ij, zeta_ij, B, lam2, beta, n,
+        force_zeta(r_ij, fc_ij, dfc_ij, zeta_ij, B, lam2, beta, n, n_precomp,
                    prefactor, eflag, evdwl);
 
       if (energy)
@@ -496,6 +493,13 @@ void PairTersoff::read_params(istream& infile, std::map<string,int> type_map,
                             "-" + type_j +
                             "-" + type_k +
                             " is defined twice!");
+      // Pre-computed values.
+      const double n2 = 2.0 * temp_params.n;
+      const double n_r = -1.0/temp_params.n;
+      temp_params.n_precomp[0] = pow(n2 * 1e-16, n_r);
+      temp_params.n_precomp[1] = pow(n2 * 1e-8, n_r);
+      temp_params.n_precomp[2] = 1.0 / temp_params.n_precomp[1];
+      temp_params.n_precomp[3] = 1.0 / temp_params.n_precomp[0];
       // All OK, store.
       got_interaction(i,j,k) = true;
       params(i,j,k) = temp_params;
@@ -544,13 +548,14 @@ double PairTersoff::zeta(double rij, double rik,
 double PairTersoff::force_zeta(double r, double fc, double fc_d, double zeta_ij,
                                double B, double lam2,
                                double beta, double n,
+                               const double n_precomp[4],
                                double &prefactor,
                                bool eflag, double &eng)
 {
   const double fa = ters_fa(r, fc, B, lam2);
   const double fa_d = ters_fa_d(r, fc, fc_d, B, lam2);
-  const double bij = ters_bij(zeta_ij, beta, n);
-  prefactor = -0.5*fa * ters_bij_d(zeta_ij, beta, n);
+  const double bij = ters_bij(zeta_ij, beta, n, n_precomp);
+  prefactor = -0.5*fa * ters_bij_d(zeta_ij, beta, n, n_precomp);
   if (eflag) eng = 0.5*bij*fa;
   return 0.5*bij*fa_d / r;
 }
@@ -617,35 +622,29 @@ double PairTersoff::ters_fa_d(double r, double fc, double fc_d,
 
 /* ---------------------------------------------------------------------- */
 
-double PairTersoff::ters_bij(double zeta, double beta, double n)
+double PairTersoff::ters_bij(double zeta, double beta, double n,
+                             const double n_precomp[4])
 {
-  const double c1 = pow(2.0 * n * 1e-16, -1.0/n);
-  const double c2 = pow(2.0 * n * 1e-8, -1.0/n);
-  const double c3 = 1.0 / c2;
-  const double c4 = 1.0 / c1;
   double tmp = beta * zeta;
-  if (tmp > c1) return 1.0/sqrt(tmp);
-  if (tmp > c2) return (1.0 - pow(tmp,-n) / (2.0*n))/sqrt(tmp);
-  if (tmp < c4) return 1.0;
-  if (tmp < c3) return 1.0 - pow(tmp,n)/(2.0*n);
+  if (tmp > n_precomp[0]) return 1.0/sqrt(tmp);
+  if (tmp > n_precomp[1]) return (1.0 - pow(tmp,-n) / (2.0*n))/sqrt(tmp);
+  if (tmp < n_precomp[3]) return 1.0;
+  if (tmp < n_precomp[2]) return 1.0 - pow(tmp,n)/(2.0*n);
   return pow(1.0 + pow(tmp,n), -1.0/(2.0*n));
 }
 
 /* ---------------------------------------------------------------------- */
 
-double PairTersoff::ters_bij_d(double zeta, double beta, double n)
+double PairTersoff::ters_bij_d(double zeta, double beta, double n,
+                               const double n_precomp[4])
 {
-  const double c1 = pow(2.0 * n * 1e-16, -1.0/n);
-  const double c2 = pow(2.0 * n * 1e-8, -1.0/n);
-  const double c3 = 1.0 / c2;
-  const double c4 = 1.0 / c1;
   double tmp = beta * zeta;
-  if (tmp > c1) return beta * -0.5*pow(tmp,-1.5);
-  if (tmp > c2) return beta * (-0.5*pow(tmp,-1.5) *
+  if (tmp > n_precomp[0]) return beta * -0.5*pow(tmp,-1.5);
+  if (tmp > n_precomp[1]) return beta * (-0.5*pow(tmp,-1.5) *
                                (1.0 - 0.5*(1.0 +  1.0/(2.0*n)) *
                                 pow(tmp,-n)));
-  if (tmp < c4) return 0.0;
-  if (tmp < c3) return -0.5*beta * pow(tmp, n-1.0);
+  if (tmp < n_precomp[3]) return 0.0;
+  if (tmp < n_precomp[2]) return -0.5*beta * pow(tmp, n-1.0);
 
   double tmp_n = pow(tmp, n);
   return -0.5 * pow(1.0+tmp_n, -1.0-(1.0/(2.0*n)))*tmp_n / zeta;

@@ -104,6 +104,9 @@ class PairTersoff /*: public Pair*/ {
     // Cutoff related.
     double D, R;
     double cut, cutmin, cutsq;
+    // Pre-computed.
+    double n_precomp[4];
+    //double c1, c2, c3, c4;
   };
 
   int n_spec;
@@ -123,6 +126,7 @@ class PairTersoff /*: public Pair*/ {
   double force_zeta(double, double, double, double,
                     double, double,
                     double, double,
+                    const double[4],
                     double&, bool, double&);
   void attractive(double, double, double,
                   double, double, int, double,
@@ -134,8 +138,8 @@ class PairTersoff /*: public Pair*/ {
   double ters_fc_d(double, double, double);
   double ters_fa(double, double, double, double);
   double ters_fa_d(double, double, double, double, double);
-  double ters_bij(double, double, double);
-  double ters_bij_d(double, double, double);
+  double ters_bij(double, double, double, const double[4]);
+  double ters_bij_d(double, double, double, const double[4]);
 
   void ters_zetaterm_d(double,
                        double, double, int, double,
