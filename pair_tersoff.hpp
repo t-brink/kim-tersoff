@@ -106,7 +106,9 @@ class PairTersoff /*: public Pair*/ {
     double cut, cutmin, cutsq;
     // Pre-computed.
     double n_precomp[4];
-    //double c1, c2, c3, c4;
+    double c2;    // c^2
+    double d2;    // d^2
+    double c2_d2; // c^2 / d^2
   };
 
   int n_spec;
@@ -122,6 +124,7 @@ class PairTersoff /*: public Pair*/ {
   double zeta(double, double,
               int, double, double, double,
               double, double, double, double,
+              double,
               double*, double*);
   double force_zeta(double, double, double, double,
                     double, double,
@@ -131,6 +134,7 @@ class PairTersoff /*: public Pair*/ {
   void attractive(double, double, double,
                   double, double, int, double,
                   double, double, double, double,
+                  double,
                   double *, double *,
                   double *, double *, double *);
 
@@ -143,7 +147,8 @@ class PairTersoff /*: public Pair*/ {
 
   void ters_zetaterm_d(double,
                        double, double, int, double,
-                       double, double, double, double,
+                       double, double, double,
+                       double, double,
                        double *, double, double *, double,
                        double *, double *, double *);
   void costheta_d(double *, double, double *, double,
@@ -152,21 +157,18 @@ class PairTersoff /*: public Pair*/ {
   // inlined functions for efficiency
 
   inline double ters_gijk(double costheta,
-                          double gamma, double c, double d, double h) const {
-    const double ters_c = c * c;
-    const double ters_d = d * d;
+                          double gamma, double c2, double d2, double c2_d2,
+                          double h) const {
     const double hcth = h - costheta;
-
-    return gamma*(1.0 + ters_c/ters_d - ters_c / (ters_d + hcth*hcth));
+    return gamma*(1.0 + c2_d2 - c2 / (d2 + hcth*hcth));
   }
 
   inline double ters_gijk_d(const double costheta,
-                            double gamma, double c, double d, double h) const {
-    const double ters_c = c * c;
-    const double ters_d = d * d;
+                            double gamma, double c2, double d2,
+                            double h) const {
     const double hcth = h - costheta;
-    const double numerator = -2.0 * ters_c * hcth;
-    const double denominator = 1.0/(ters_d + hcth*hcth);
+    const double numerator = -2.0 * c2 * hcth;
+    const double denominator = 1.0/(d2 + hcth*hcth);
     return gamma*numerator*denominator*denominator;
   }
 

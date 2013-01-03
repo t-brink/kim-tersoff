@@ -242,11 +242,13 @@ void PairTersoff::compute(KIM_API_model& kim_model,
         const double R = params(itype,jtype,ktype).R;
         const double D = params(itype,jtype,ktype).D;
         const double gamma = params(itype,jtype,ktype).gamma;
-        const double c = params(itype,jtype,ktype).c;
-        const double d = params(itype,jtype,ktype).d;
+        const double c2 = params(itype,jtype,ktype).c2;
+        const double d2 = params(itype,jtype,ktype).d2;
+        const double c2_d2 = params(itype,jtype,ktype).c2_d2;
         const double h = params(itype,jtype,ktype).h;
 
-        zeta_ij += zeta(r_ij,r_ik,m,lam3,R,D,gamma,c,d,h,delr_ij,delr_ik);
+        zeta_ij += zeta(r_ij,r_ik,m,lam3,R,D,gamma,c2,d2,c2_d2,h,
+                        delr_ij,delr_ik);
       }
 
       // pairwise force due to zeta
@@ -312,14 +314,15 @@ void PairTersoff::compute(KIM_API_model& kim_model,
         const int m = params(itype,jtype,ktype).m;
         const double lam3 = params(itype,jtype,ktype).lam3;
         const double gamma = params(itype,jtype,ktype).gamma;
-        const double c = params(itype,jtype,ktype).c;
-        const double d = params(itype,jtype,ktype).d;
+        const double c2 = params(itype,jtype,ktype).c2;
+        const double d2 = params(itype,jtype,ktype).d2;
+        const double c2_d2 = params(itype,jtype,ktype).c2_d2;
         const double h = params(itype,jtype,ktype).h;
 
         double fi[3], fj[3], fk[3];
 
         attractive(prefactor, r_ij, r_ik,
-                   R, D, m, lam3, gamma, c, d, h,
+                   R, D, m, lam3, gamma, c2, d2, c2_d2, h,
                    delr_ij, delr_ik, fi, fj, fk);
 
         if (forces) {
@@ -500,6 +503,9 @@ void PairTersoff::read_params(istream& infile, std::map<string,int> type_map,
       temp_params.n_precomp[1] = pow(n2 * 1e-8, n_r);
       temp_params.n_precomp[2] = 1.0 / temp_params.n_precomp[1];
       temp_params.n_precomp[3] = 1.0 / temp_params.n_precomp[0];
+      temp_params.c2 = temp_params.c * temp_params.c;
+      temp_params.d2 = temp_params.d * temp_params.d;
+      temp_params.c2_d2 = temp_params.c2 / temp_params.d2;
       // All OK, store.
       got_interaction(i,j,k) = true;
       params(i,j,k) = temp_params;
@@ -523,7 +529,8 @@ double PairTersoff::repulsive(double r, double fc, double fc_d,
 
 double PairTersoff::zeta(double rij, double rik,
                          int m, double lam3, double R, double D,
-                         double gamma, double c, double d, double h,
+                         double gamma, double c2, double d2, double c2_d2,
+                         double h,
                          double* delrij, double* delrik)
 {
   const double costheta = (delrij[0]*delrik[0]
@@ -540,7 +547,7 @@ double PairTersoff::zeta(double rij, double rik,
   else if (arg < -69.0776) ex_delr = 0.0;
   else ex_delr = exp(arg);
 
-  return ters_fc(rik,R,D) * ters_gijk(costheta,gamma,c,d,h) * ex_delr;
+  return ters_fc(rik,R,D) * ters_gijk(costheta,gamma,c2,d2,c2_d2,h) * ex_delr;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -569,7 +576,8 @@ double PairTersoff::force_zeta(double r, double fc, double fc_d, double zeta_ij,
 void PairTersoff::attractive(double prefactor,
                              double rij, double rik,
                              double R, double D, int m, double lam3,
-                             double gamma, double c, double d, double h,
+                             double gamma, double c2, double d2, double c2_d2,
+                             double h,
                              double *delrij, double *delrik,
                              double *fi, double *fj, double *fk)
 {
@@ -580,7 +588,7 @@ void PairTersoff::attractive(double prefactor,
   vec3_scale(1.0/rik, delrik, rik_hat); // rik_hat = delrik / rik
 
   ters_zetaterm_d(prefactor,
-                  R, D, m, lam3, gamma, c, d, h,
+                  R, D, m, lam3, gamma, c2, d2, c2_d2, h,
                   rij_hat,rij,rik_hat,rik,fi,fj,fk);
 }
 
@@ -654,7 +662,8 @@ double PairTersoff::ters_bij_d(double zeta, double beta, double n,
 
 void PairTersoff::ters_zetaterm_d(double prefactor,
                                   double R, double D, int m, double lam3,
-                                  double gamma, double c, double d, double h,
+                                  double gamma, double c2, double d2,
+                                  double c2_d2, double h,
                                   double *rij_hat, double rij,
                                   double *rik_hat, double rik,
                                   double *dri, double *drj, double *drk)
@@ -676,8 +685,8 @@ void PairTersoff::ters_zetaterm_d(double prefactor,
   else ex_delr_d = lam3 * ex_delr; // m == 1
 
   cos_theta = vec3_dot(rij_hat,rik_hat);
-  gijk = ters_gijk(cos_theta, gamma, c, d, h);
-  gijk_d = ters_gijk_d(cos_theta, gamma, c, d, h);
+  gijk = ters_gijk(cos_theta, gamma, c2, d2, c2_d2, h);
+  gijk_d = ters_gijk_d(cos_theta, gamma, c2, d2, h);
   costheta_d(rij_hat,rij,rik_hat,rik,dcosdri,dcosdrj,dcosdrk);
 
   // compute the derivative wrt Ri
