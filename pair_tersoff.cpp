@@ -155,7 +155,7 @@ void PairTersoff::compute(KIM_API_model& kim_model,
 
     for (int jj = 0; jj != n_neigh; ++jj) {
       int j = use_neighbor_list ? neighbors[jj] : jj;
-      if (i == j) continue;
+      if (!use_neighbor_list && i == j) continue;
       const int jtype = atom_types[j];
 
       double delr_ij[3];
@@ -217,9 +217,10 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       for (int kk = 0; kk != n_neigh; ++kk) {
         if (jj == kk) continue;
         int k = use_neighbor_list ? neighbors[kk] : kk;
-        if (i == k) continue; // Needed in cluster mode, as there is
-                              // no neighbor list which will make sure
-                              // i = k doesn't happen!
+        if (!use_neighbor_list && i == k)
+          // Needed in cluster mode, as there is no neighbor list
+          // which will make sure i = k doesn't happen!
+          continue;
         const int ktype = atom_types[k];
 
         double delr_ik[3];
@@ -285,9 +286,10 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       for (int kk = 0; kk != n_neigh; ++kk) {
         if (jj == kk) continue;
         int k = use_neighbor_list ? neighbors[kk] : kk;
-        if (i == k) continue; // Needed in cluster mode, as there is
-                              // no neighbor list which will make sure
-                              // i = k doesn't happen!
+        if (!use_neighbor_list && i == k)
+          // Needed in cluster mode, as there is no neighbor list
+          // which will make sure i = k doesn't happen!
+          continue;
         const int ktype = atom_types[k];
 
         double delr_ik[3];
