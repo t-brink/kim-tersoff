@@ -147,7 +147,7 @@ void PairTersoff::compute(KIM_API_model& kim_model,
 
     const int itype = atom_types[i];
     double xtmp, ytmp, ztmp;
-    if (!distvec) {
+    if (!use_distvec) {
       xtmp = atom_coords(i,0);
       ytmp = atom_coords(i,1);
       ztmp = atom_coords(i,2);
