@@ -207,7 +207,7 @@ int model_driver_tersoff_init_(void* km, // The KIM model object
     indices.insert(type_idx);
   }
   free(partcl_types);
-  // Check if the indices are continuous (as set memners are unique,
+  // Check if the indices are continuous (as set members are unique,
   // the minimum must be 0, the maximum n_spec-1).  The set is
   // guaranteed to contain at least one entry, as we check for empty
   // species list above.
