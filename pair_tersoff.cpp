@@ -30,9 +30,9 @@ using namespace std;
 
 /* ---------------------------------------------------------------------- */
 
-PairTersoff::PairTersoff(std::string parameter_file,
+PairTersoff::PairTersoff(string parameter_file,
                          int n_spec,
-                         std::map<std::string,int> type_map,
+                         map<string,int> type_map,
                          // Conversion factors.
                          double energy_conv,
                          double length_conv,
@@ -42,6 +42,13 @@ PairTersoff::PairTersoff(std::string parameter_file,
                          )
   : kim_indices(ki), n_spec(n_spec), params(n_spec, n_spec, n_spec)
 {
+  // Prepare index -> element name mapping.
+  for (map<string,int>::const_iterator i = type_map.begin();
+       i != type_map.end();
+       ++i) {
+    to_spec[i->second] = i->first;
+  }
+  // Read parameter file.
   std::fstream f(parameter_file.c_str(), std::ios_base::in);
   read_params(f, type_map, energy_conv, length_conv, inv_length_conv);
 }
@@ -344,175 +351,198 @@ void PairTersoff::compute(KIM_API_model& kim_model,
 
 /* ---------------------------------------------------------------------- */
 
+/* Read parameters.
+
+   Reads the parameters from an input file and stores
+   them. Automatically calls prepare_params() to check validity of
+   parameters and pre-compute some values.
+ */
 void PairTersoff::read_params(istream& infile, std::map<string,int> type_map,
                               double energy_conv,
                               double length_conv,
                               double inv_length_conv) {
-    // Strip comments lines.
-    stringstream buffer;
-    string line;
-    while(getline(infile, line))
-      buffer << line.substr(0, line.find('#'));
-    // Read in parameters.
-    Array3D<bool> got_interaction(n_spec,n_spec,n_spec);
-    got_interaction = false;
-    Params temp_params;
-    string type_i, type_j, type_k;
-    max_cutoff = 0.0;
-    while (buffer >> type_i
-                  >> type_j
-                  >> type_k
-                  >> temp_params.m
-                  >> temp_params.gamma
-                  >> temp_params.lam3
-                  >> temp_params.c
-                  >> temp_params.d
-                  >> temp_params.h // costheta0
-                  >> temp_params.n
-                  >> temp_params.beta
-                  >> temp_params.lam2
-                  >> temp_params.B
-                  >> temp_params.R
-                  >> temp_params.D
-                  >> temp_params.lam1
-                  >> temp_params.A) {
-      // Unit conversion.
-      temp_params.A *= energy_conv;
-      temp_params.B *= energy_conv;
-      temp_params.lam1 *= inv_length_conv;
-      temp_params.lam2 *= inv_length_conv;
-      temp_params.lam3 *= inv_length_conv;
-      temp_params.R *= length_conv;
-      temp_params.D *= length_conv;
-      // Precalculated parameters.
-      temp_params.cut = temp_params.R + temp_params.D; // max cutoff.
-      temp_params.cutmin =
-        temp_params.R - temp_params.D; // below this the cutoff value is 1.0
-      // for neighbor list.
-      temp_params.cutsq = temp_params.cut * temp_params.cut;
-      // Get the cutoff to pass to KIM, which is the biggest cutoff.
-      if (temp_params.cut > max_cutoff)
-        max_cutoff = temp_params.cut;
-      // Get the atom type indices.
-      std::map<std::string,int>::const_iterator it;
-      int i,j,k;
-      it = type_map.find(type_i);
-      if (it != type_map.end())
-        i = it->second;
-      else
-        throw runtime_error("Unknown species: " + type_i);
-      it = type_map.find(type_j);
-      if (it != type_map.end())
-        j = it->second;
-      else
-        throw runtime_error("Unknown species: " + type_j);
-      it = type_map.find(type_k);
-      if (it != type_map.end())
-        k = it->second;
-      else
-        throw runtime_error("Unknown species: " + type_k);
-      // Check values of parameters.
-      if (temp_params.c < 0)
-        throw runtime_error("Parameter c ("
-                            + type_i +
-                            "-" + type_j +
-                            "-" + type_k +
-                            ") may not be smaller than zero.");
-      if (temp_params.d < 0)
-        throw runtime_error("Parameter d ("
-                            + type_i +
-                            "-" + type_j +
-                            "-" + type_k +
-                            ") may not be smaller than zero.");
-      if (temp_params.n < 0)
-        throw runtime_error("Parameter n ("
-                            + type_i +
-                            "-" + type_j +
-                            "-" + type_k +
-                            ") may not be smaller than zero.");
-      if (temp_params.beta < 0)
-        throw runtime_error("Parameter beta ("
-                            + type_i +
-                            "-" + type_j +
-                            "-" + type_k +
-                            ") may not be smaller than zero.");
-      if (temp_params.lam1 < 0)
-        throw runtime_error("Parameter lambda1 ("
-                            + type_i +
-                            "-" + type_j +
-                            "-" + type_k +
-                            ") may not be smaller than zero.");
-      if (temp_params.lam2 < 0)
-        throw runtime_error("Parameter lambda2 ("
-                            + type_i +
-                            "-" + type_j +
-                            "-" + type_k +
-                            ") may not be smaller than zero.");
-      if (temp_params.A < 0)
-        throw runtime_error("Parameter A ("
-                            + type_i +
-                            "-" + type_j +
-                            "-" + type_k +
-                            ") may not be smaller than zero.");
-      if (temp_params.B < 0)
-        throw runtime_error("Parameter B ("
-                            + type_i +
-                            "-" + type_j +
-                            "-" + type_k +
-                            ") may not be smaller than zero.");
-      if (temp_params.m != 1 && temp_params.m != 3)
-        throw runtime_error("Parameter m ("
-                            + type_i +
-                            "-" + type_j +
-                            "-" + type_k +
-                            ") must be one or three.");
-      if (temp_params.R < 0)
-        throw runtime_error("Parameter R ("
-                            + type_i +
-                            "-" + type_j +
-                            "-" + type_k +
-                            ") may not be smaller than zero.");
-      if (temp_params.D < 0)
-        throw runtime_error("Parameter D ("
-                            + type_i +
-                            "-" + type_j +
-                            "-" + type_k +
-                            ") may not be smaller than zero.");
-      if (temp_params.D > temp_params.R)
-        throw runtime_error("Parameter D ("
-                            + type_i +
-                            "-" + type_j +
-                            "-" + type_k +
-                            ") must be smaller than R.");
-      if (temp_params.gamma < 0)
-        throw runtime_error("Parameter gamma ("
-                            + type_i +
-                            "-" + type_j +
-                            "-" + type_k +
-                            ") may not be smaller than zero.");
-      // Check if parameters were given twice.
-      if (got_interaction(i,j,k))
-        throw runtime_error("Interaction " + type_i +
-                            "-" + type_j +
-                            "-" + type_k +
-                            " is defined twice!");
-      // Pre-computed values.
-      const double n2 = 2.0 * temp_params.n;
-      const double n_r = -1.0/temp_params.n;
-      temp_params.n_precomp[0] = pow(n2 * 1e-16, n_r);
-      temp_params.n_precomp[1] = pow(n2 * 1e-8, n_r);
-      temp_params.n_precomp[2] = 1.0 / temp_params.n_precomp[1];
-      temp_params.n_precomp[3] = 1.0 / temp_params.n_precomp[0];
-      temp_params.c2 = temp_params.c * temp_params.c;
-      temp_params.d2 = temp_params.d * temp_params.d;
-      temp_params.c2_d2 = temp_params.c2 / temp_params.d2;
-      // All OK, store.
-      got_interaction(i,j,k) = true;
-      params(i,j,k) = temp_params;
-    }
-    if (!got_interaction.all())
-      throw runtime_error("Not all interactions were set!");
+  // Strip comments lines.
+  stringstream buffer;
+  string line;
+  while(getline(infile, line))
+    buffer << line.substr(0, line.find('#'));
+  // Read in parameters.
+  Array3D<bool> got_interaction(n_spec,n_spec,n_spec);
+  got_interaction = false;
+  Params temp_params;
+  string type_i, type_j, type_k;
+  while (buffer >> type_i
+                >> type_j
+                >> type_k
+                >> temp_params.m
+                >> temp_params.gamma
+                >> temp_params.lam3
+                >> temp_params.c
+                >> temp_params.d
+                >> temp_params.h // costheta0
+                >> temp_params.n
+                >> temp_params.beta
+                >> temp_params.lam2
+                >> temp_params.B
+                >> temp_params.R
+                >> temp_params.D
+                >> temp_params.lam1
+                >> temp_params.A) {
+    // Unit conversion.
+    temp_params.A *= energy_conv;
+    temp_params.B *= energy_conv;
+    temp_params.lam1 *= inv_length_conv;
+    temp_params.lam2 *= inv_length_conv;
+    temp_params.lam3 *= inv_length_conv;
+    temp_params.R *= length_conv;
+    temp_params.D *= length_conv;
+    // Get the atom type indices.
+    std::map<std::string,int>::const_iterator it;
+    int i,j,k;
+    it = type_map.find(type_i);
+    if (it != type_map.end())
+      i = it->second;
+    else
+      throw runtime_error("Unknown species: " + type_i);
+    it = type_map.find(type_j);
+    if (it != type_map.end())
+      j = it->second;
+    else
+      throw runtime_error("Unknown species: " + type_j);
+    it = type_map.find(type_k);
+    if (it != type_map.end())
+      k = it->second;
+    else
+      throw runtime_error("Unknown species: " + type_k);
+    // Check if parameters were given twice.
+    if (got_interaction(i,j,k))
+      throw runtime_error("Interaction " + type_i +
+                          "-" + type_j +
+                          "-" + type_k +
+                          " is defined twice!");
+    // All OK, store.
+    got_interaction(i,j,k) = true;
+    params(i,j,k) = temp_params;
   }
+  if (!got_interaction.all())
+    throw runtime_error("Not all interactions were set!");
+  // Check parameters and pre-compute values.
+  prepare_params();
+}
+
+/* Check parameters and pre-compute values. */
+void PairTersoff::prepare_params() {
+  max_cutoff = 0.0;
+  for (int i = 0; i != n_spec; ++i) {
+    string type_i = to_spec.at(i);
+    for (int j = 0; j != n_spec; ++j) {
+      string type_j = to_spec.at(j);
+      for (int k = 0; k != n_spec; ++k) {
+        string type_k = to_spec.at(k);
+        Params& temp_params = params(i,j,k);
+        // Check values of parameters.
+        if (temp_params.c < 0)
+          throw runtime_error("Parameter c ("
+                              + type_i +
+                              "-" + type_j +
+                              "-" + type_k +
+                              ") may not be smaller than zero.");
+        if (temp_params.d < 0)
+          throw runtime_error("Parameter d ("
+                              + type_i +
+                              "-" + type_j +
+                              "-" + type_k +
+                              ") may not be smaller than zero.");
+        if (temp_params.n < 0)
+          throw runtime_error("Parameter n ("
+                              + type_i +
+                              "-" + type_j +
+                              "-" + type_k +
+                              ") may not be smaller than zero.");
+        if (temp_params.beta < 0)
+          throw runtime_error("Parameter beta ("
+                              + type_i +
+                              "-" + type_j +
+                              "-" + type_k +
+                              ") may not be smaller than zero.");
+        if (temp_params.lam1 < 0)
+          throw runtime_error("Parameter lambda1 ("
+                              + type_i +
+                              "-" + type_j +
+                              "-" + type_k +
+                              ") may not be smaller than zero.");
+        if (temp_params.lam2 < 0)
+          throw runtime_error("Parameter lambda2 ("
+                              + type_i +
+                              "-" + type_j +
+                              "-" + type_k +
+                              ") may not be smaller than zero.");
+        if (temp_params.A < 0)
+          throw runtime_error("Parameter A ("
+                              + type_i +
+                              "-" + type_j +
+                              "-" + type_k +
+                              ") may not be smaller than zero.");
+        if (temp_params.B < 0)
+          throw runtime_error("Parameter B ("
+                              + type_i +
+                              "-" + type_j +
+                              "-" + type_k +
+                              ") may not be smaller than zero.");
+        if (temp_params.m != 1 && temp_params.m != 3)
+          throw runtime_error("Parameter m ("
+                              + type_i +
+                              "-" + type_j +
+                              "-" + type_k +
+                              ") must be one or three.");
+        if (temp_params.R < 0)
+          throw runtime_error("Parameter R ("
+                              + type_i +
+                              "-" + type_j +
+                              "-" + type_k +
+                              ") may not be smaller than zero.");
+        if (temp_params.D < 0)
+          throw runtime_error("Parameter D ("
+                              + type_i +
+                              "-" + type_j +
+                              "-" + type_k +
+                              ") may not be smaller than zero.");
+        if (temp_params.D > temp_params.R)
+          throw runtime_error("Parameter D ("
+                              + type_i +
+                              "-" + type_j +
+                              "-" + type_k +
+                              ") must be smaller than R.");
+        if (temp_params.gamma < 0)
+          throw runtime_error("Parameter gamma ("
+                              + type_i +
+                              "-" + type_j +
+                              "-" + type_k +
+                              ") may not be smaller than zero.");
+        // Cutoff.
+        temp_params.cut =
+          temp_params.R + temp_params.D; // max cutoff.
+        temp_params.cutmin =
+          temp_params.R - temp_params.D; // below this the cutoff value is 1.0
+        temp_params.cutsq =
+          temp_params.cut * temp_params.cut; // for fast check if inside cutoff
+        // Get the cutoff to pass to KIM, which is the biggest cutoff.
+        if (temp_params.cut > max_cutoff)
+          max_cutoff = temp_params.cut;
+        // Pre-compute values.
+        const double n2 = 2.0 * temp_params.n;
+        const double n_r = -1.0/temp_params.n;
+        temp_params.n_precomp[0] = pow(n2 * 1e-16, n_r);
+        temp_params.n_precomp[1] = pow(n2 * 1e-8, n_r);
+        temp_params.n_precomp[2] = 1.0 / temp_params.n_precomp[1];
+        temp_params.n_precomp[3] = 1.0 / temp_params.n_precomp[0];
+        temp_params.c2 = temp_params.c * temp_params.c;
+        temp_params.d2 = temp_params.d * temp_params.d;
+        temp_params.c2_d2 = temp_params.c2 / temp_params.d2;
+      }
+    }
+  }
+}
 
 /* ---------------------------------------------------------------------- */
 
