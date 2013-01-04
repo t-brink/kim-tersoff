@@ -85,7 +85,7 @@ class PairTersoff /*: public Pair*/ {
   virtual ~PairTersoff();
   void compute(KIM_API_model&, bool, bool, KIM_IterLoca,
                int, const int*, const Array2D<double>&,
-               double*, double*, Array2D<double>*);
+               double*, double*, Array2D<double>*) const;
   void read_params(std::istream&, std::map<std::string,int>,
                    double, double, double);
   double cutoff() const {
@@ -120,39 +120,39 @@ class PairTersoff /*: public Pair*/ {
   int maxparam;                 // max # of parameter sets
 
   double repulsive(double, double, double, double, double,
-                   bool, double&);
+                   bool, double&) const;
   double zeta(double, double,
               int, double, double, double,
               double, double, double, double,
               double,
-              double*, double*);
+              double*, double*) const;
   double force_zeta(double, double, double, double,
                     double, double,
                     double, double,
                     const double[4],
-                    double&, bool, double&);
+                    double&, bool, double&) const;
   void attractive(double, double, double,
                   double, double, int, double,
                   double, double, double, double,
                   double,
                   double *, double *,
-                  double *, double *, double *);
+                  double *, double *, double *) const;
 
-  double ters_fc(double, double, double);
-  double ters_fc_d(double, double, double);
-  double ters_fa(double, double, double, double);
-  double ters_fa_d(double, double, double, double, double);
-  double ters_bij(double, double, double, const double[4]);
-  double ters_bij_d(double, double, double, const double[4]);
+  double ters_fc(double, double, double) const;
+  double ters_fc_d(double, double, double) const;
+  double ters_fa(double, double, double, double) const;
+  double ters_fa_d(double, double, double, double, double) const;
+  double ters_bij(double, double, double, const double[4]) const;
+  double ters_bij_d(double, double, double, const double[4]) const;
 
   void ters_zetaterm_d(double,
                        double, double, int, double,
                        double, double, double,
                        double, double,
                        double *, double, double *, double,
-                       double *, double *, double *);
+                       double *, double *, double *) const;
   void costheta_d(double *, double, double *, double,
-                  double *, double *, double *);
+                  double *, double *, double *) const;
 
   // inlined functions for efficiency
 

@@ -64,7 +64,7 @@ void PairTersoff::compute(KIM_API_model& kim_model,
                           const int* atom_types,
                           const Array2D<double>& atom_coords,
                           double* energy, double* atom_energy,
-                          Array2D<double>* forces)
+                          Array2D<double>* forces) const
 {
   int ii;          // Iteration over all atoms.
   int error;       // KIM error code.
@@ -518,7 +518,7 @@ void PairTersoff::read_params(istream& infile, std::map<string,int> type_map,
 
 double PairTersoff::repulsive(double r, double fc, double fc_d,
                               double lam1, double A,
-                              bool eflag, double &eng)
+                              bool eflag, double &eng) const
 {
   const double tmp_exp = exp(-lam1 * r);
   if (eflag) eng = fc * A * tmp_exp;
@@ -531,7 +531,7 @@ double PairTersoff::zeta(double rij, double rik,
                          int m, double lam3, double R, double D,
                          double gamma, double c2, double d2, double c2_d2,
                          double h,
-                         double* delrij, double* delrik)
+                         double* delrij, double* delrik) const
 {
   const double costheta = (delrij[0]*delrik[0]
                            + delrij[1]*delrik[1]
@@ -557,7 +557,7 @@ double PairTersoff::force_zeta(double r, double fc, double fc_d, double zeta_ij,
                                double beta, double n,
                                const double n_precomp[4],
                                double &prefactor,
-                               bool eflag, double &eng)
+                               bool eflag, double &eng) const
 {
   const double fa = ters_fa(r, fc, B, lam2);
   const double fa_d = ters_fa_d(r, fc, fc_d, B, lam2);
@@ -579,7 +579,7 @@ void PairTersoff::attractive(double prefactor,
                              double gamma, double c2, double d2, double c2_d2,
                              double h,
                              double *delrij, double *delrik,
-                             double *fi, double *fj, double *fk)
+                             double *fi, double *fj, double *fk) const
 {
   double rij_hat[3];
   vec3_scale(1.0/rij, delrij, rij_hat); // rij_hat = delrij / rij
@@ -594,7 +594,7 @@ void PairTersoff::attractive(double prefactor,
 
 /* ---------------------------------------------------------------------- */
 
-double PairTersoff::ters_fc(double r, double R, double D)
+double PairTersoff::ters_fc(double r, double R, double D) const
 {
   if (r < R-D) return 1.0;
   if (r > R+D) return 0.0;
@@ -603,7 +603,7 @@ double PairTersoff::ters_fc(double r, double R, double D)
 
 /* ---------------------------------------------------------------------- */
 
-double PairTersoff::ters_fc_d(double r, double R, double D)
+double PairTersoff::ters_fc_d(double r, double R, double D) const
 {
   if (r < R-D) return 0.0;
   if (r > R+D) return 0.0;
@@ -613,7 +613,7 @@ double PairTersoff::ters_fc_d(double r, double R, double D)
 /* ---------------------------------------------------------------------- */
 
 double PairTersoff::ters_fa(double r, double fc,
-                            double B, double lam2)
+                            double B, double lam2) const
 {
   if (fc == 0.0) return 0.0;
   return -B * exp(-lam2 * r) * fc;
@@ -622,7 +622,7 @@ double PairTersoff::ters_fa(double r, double fc,
 /* ---------------------------------------------------------------------- */
 
 double PairTersoff::ters_fa_d(double r, double fc, double fc_d,
-                              double B, double lam2)
+                              double B, double lam2) const
 {
   if (fc == 0.0) return 0.0;
   return B * exp(-lam2 * r) * (lam2 * fc - fc_d);
@@ -631,7 +631,7 @@ double PairTersoff::ters_fa_d(double r, double fc, double fc_d,
 /* ---------------------------------------------------------------------- */
 
 double PairTersoff::ters_bij(double zeta, double beta, double n,
-                             const double n_precomp[4])
+                             const double n_precomp[4]) const
 {
   double tmp = beta * zeta;
   if (tmp > n_precomp[0]) return 1.0/sqrt(tmp);
@@ -644,7 +644,7 @@ double PairTersoff::ters_bij(double zeta, double beta, double n,
 /* ---------------------------------------------------------------------- */
 
 double PairTersoff::ters_bij_d(double zeta, double beta, double n,
-                               const double n_precomp[4])
+                               const double n_precomp[4]) const
 {
   double tmp = beta * zeta;
   if (tmp > n_precomp[0]) return beta * -0.5*pow(tmp,-1.5);
@@ -666,7 +666,7 @@ void PairTersoff::ters_zetaterm_d(double prefactor,
                                   double c2_d2, double h,
                                   double *rij_hat, double rij,
                                   double *rik_hat, double rik,
-                                  double *dri, double *drj, double *drk)
+                                  double *dri, double *drj, double *drk) const
 {
   double gijk,gijk_d,ex_delr,ex_delr_d,fc,dfc,cos_theta,tmp;
   double dcosdri[3],dcosdrj[3],dcosdrk[3];
@@ -723,7 +723,7 @@ void PairTersoff::ters_zetaterm_d(double prefactor,
 
 void PairTersoff::costheta_d(double *rij_hat, double rij,
                              double *rik_hat, double rik,
-                             double *dri, double *drj, double *drk)
+                             double *dri, double *drj, double *drk) const
 {
   // first element is devative wrt Ri, second wrt Rj, third wrt Rk
 
