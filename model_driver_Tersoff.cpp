@@ -48,7 +48,7 @@ extern "C" {
   static int destroy(KIM_API_model**);
   static int compute(KIM_API_model**);
   */
-  int model_driver_tersoff_init_(void*, char*, int*, int*);
+  int model_driver_init(void*, char*, int*, int*);
 }
 
 
@@ -165,11 +165,11 @@ static int compute(KIM_API_model** kimmdl) {
 
 
 
-int model_driver_tersoff_init_(void* km, // The KIM model object
-                               // Array[numparamfiles][nmstrlen]
-                               char* paramfile_names,
-                               int* nmstrlen,
-                               int* numparamfiles) {
+int model_driver_init(void* km, // The KIM model object
+                      // Array[numparamfiles][nmstrlen]
+                      char* paramfile_names,
+                      int* nmstrlen,
+                      int* numparamfiles) {
   /* KIM variables */
   KIM_API_model& kim_model = **static_cast<KIM_API_model**>(km);
 

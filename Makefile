@@ -20,32 +20,14 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-MODEL_DRIVER_NAME := model_driver_Tersoff
+include ../Makefile.KIM_Config
 
-LOCALOBJ = pair_tersoff.o
+MODEL_DRIVER_NAME := model_driver_Tersoff
+MODEL_DRIVER_INIT_FUNCTION_NAME := model_driver_init
+MODEL_DRIVER_INIT_FUNCTION_LANG := C
+
+LOCALOBJ = pair_tersoff.o model_driver_Tersoff.o
 
 LOCALCLEAN =
 
-# No changes should be needed below this line.
-
-MODEL_DRIVER_BUILD_TARGET := $(strip $(MODEL_DRIVER_NAME)).a
-
-ifndef KIM_API_DIR
-   include $(KIM_DIR)/KIM_API/Include.mk
-else
-   include $(KIM_API_DIR)/Include.mk
-endif
-
-
-all: $(MODEL_DRIVER_BUILD_TARGET)
-
-$(strip $(MODEL_DRIVER_NAME)).a: $(LOCALOBJ) $(strip $(MODEL_DRIVER_NAME)).o
-	ar rcs $@ *.o
-
-$(strip $(MODEL_DRIVER_NAME)).o: Makefile
-
-Makefile: $(KIM_API_DIR)/Include.mk
-	@touch Makefile
-
-clean:
-	rm -f *.o *.mod *.a *.so $(LOCALCLEAN)
+include $(KIM_DIR)/MAKE_SYSTEM/Makefile.ModelDriver

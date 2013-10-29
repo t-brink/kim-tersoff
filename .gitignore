@@ -2,4 +2,4 @@
 *.a
 *.o
 *.so
-/lammps-*
+/export-list.txt
