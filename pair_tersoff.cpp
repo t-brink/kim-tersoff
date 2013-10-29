@@ -23,6 +23,10 @@
 #include <fstream>
 #include <sstream>
 
+// DEBUG
+//#include <iostream>
+// /DEBUG
+
 #include <KIM_API_status.h>
 
 using namespace model_driver_Tersoff;
@@ -119,6 +123,15 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       (*forces)(i, 2) = 0.0;
     }
 
+  // Reset virial.
+  if (virial)
+    for (int i = 0; i != 6; ++i)
+      virial[i] = 0.0;
+  if (particleVirial)
+    for (int i = 0; i != n_atoms; ++i)
+      for (int j = 0; j != 6; ++j)
+        (*particleVirial)(i, j) = 0.0;
+
   // loop over full neighbor list of my atoms
 
   // ii will only be changed in locator mode, otherwise it stays zero
@@ -161,6 +174,7 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       ytmp = atom_coords(i,1);
       ztmp = atom_coords(i,2);
     }
+    double fx, fy, fz; // Temporary force variables.
 
     for (int jj = 0; jj != n_neigh; ++jj) {
       int j = use_neighbor_list ? neighbors[jj] : jj;
@@ -207,10 +221,34 @@ void PairTersoff::compute(KIM_API_model& kim_model,
         atom_energy[i] += 0.5 * evdwl;
       }
 
-      if (forces) {
-        (*forces)(i,0) -= delr_ij[0]*fpair;
-        (*forces)(i,1) -= delr_ij[1]*fpair;
-        (*forces)(i,2) -= delr_ij[2]*fpair;
+      if (forces || virial || particleVirial) {
+        fx = delr_ij[0]*fpair;
+        fy = delr_ij[1]*fpair;
+        fz = delr_ij[2]*fpair;
+
+        if (forces) {
+          (*forces)(i,0) -= fx;
+          (*forces)(i,1) -= fy;
+          (*forces)(i,2) -= fz;
+        }
+
+        if (virial) {
+          virial[0] -= delr_ij[0] * fx;
+          virial[1] -= delr_ij[1] * fy;
+          virial[2] -= delr_ij[2] * fz;
+          virial[3] -= delr_ij[1] * fz; // yz
+          virial[4] -= delr_ij[0] * fz; // xz
+          virial[5] -= delr_ij[0] * fy; // xy
+        }
+
+        if (particleVirial) {
+          (*particleVirial)(i,0) -= 0.5 * delr_ij[0] * fx;
+          (*particleVirial)(i,1) -= 0.5 * delr_ij[1] * fy;
+          (*particleVirial)(i,2) -= 0.5 * delr_ij[2] * fz;
+          (*particleVirial)(i,3) -= 0.5 * delr_ij[1] * fz; // yz
+          (*particleVirial)(i,4) -= 0.5 * delr_ij[0] * fz; // xz
+          (*particleVirial)(i,5) -= 0.5 * delr_ij[0] * fy; // xy
+        }
       }
 
       // three-body interactions
@@ -280,13 +318,37 @@ void PairTersoff::compute(KIM_API_model& kim_model,
         atom_energy[i] += evdwl;
       }
 
-      if (forces) {
-        (*forces)(i,0) += delr_ij[0]*fzeta;
-        (*forces)(i,1) += delr_ij[1]*fzeta;
-        (*forces)(i,2) += delr_ij[2]*fzeta;
-        (*forces)(j,0) -= delr_ij[0]*fzeta;
-        (*forces)(j,1) -= delr_ij[1]*fzeta;
-        (*forces)(j,2) -= delr_ij[2]*fzeta;
+      if (forces || virial || particleVirial) {
+        fx = delr_ij[0]*fzeta;
+        fy = delr_ij[1]*fzeta;
+        fz = delr_ij[2]*fzeta;
+
+        if (forces) {
+          (*forces)(i,0) += fx;
+          (*forces)(i,1) += fy;
+          (*forces)(i,2) += fz;
+          (*forces)(j,0) -= fx;
+          (*forces)(j,1) -= fy;
+          (*forces)(j,2) -= fz;
+        }
+
+        if (virial) {
+          virial[0] += delr_ij[0] * fx;
+          virial[1] += delr_ij[1] * fy;
+          virial[2] += delr_ij[2] * fz;
+          virial[3] += delr_ij[1] * fz; // yz
+          virial[4] += delr_ij[0] * fz; // xz
+          virial[5] += delr_ij[0] * fy; // xy
+        }
+
+        if (particleVirial) {
+          (*particleVirial)(i,0) += 0.5 * delr_ij[0] * fx;
+          (*particleVirial)(i,1) += 0.5 * delr_ij[1] * fy;
+          (*particleVirial)(i,2) += 0.5 * delr_ij[2] * fz;
+          (*particleVirial)(i,3) += 0.5 * delr_ij[1] * fz; // yz
+          (*particleVirial)(i,4) += 0.5 * delr_ij[0] * fz; // xz
+          (*particleVirial)(i,5) += 0.5 * delr_ij[0] * fy; // xy
+        }
       }
 
       // attractive term via loop over k
@@ -346,8 +408,47 @@ void PairTersoff::compute(KIM_API_model& kim_model,
           (*forces)(k,2) += fk[2];
         }
 
+        if (particleVirial) {
+          double vxx = 1.0/3.0 * (delr_ij[0]*fj[0] + delr_ik[0]*fk[0]);
+          double vyy = 1.0/3.0 * (delr_ij[1]*fj[1] + delr_ik[1]*fk[1]);
+          double vzz = 1.0/3.0 * (delr_ij[2]*fj[2] + delr_ik[2]*fk[2]);
+          double vyz = 1.0/3.0 * (delr_ij[1]*fj[2] + delr_ik[1]*fk[2]);
+          double vxz = 1.0/3.0 * (delr_ij[0]*fj[2] + delr_ik[0]*fk[2]);
+          double vxy = 1.0/3.0 * (delr_ij[0]*fj[1] + delr_ik[0]*fk[1]);
+          (*particleVirial)(i,0) -= vxx;
+          (*particleVirial)(i,1) -= vyy;
+          (*particleVirial)(i,2) -= vzz;
+          (*particleVirial)(i,3) -= vyz;
+          (*particleVirial)(i,4) -= vxz;
+          (*particleVirial)(i,5) -= vxy;
+          (*particleVirial)(j,0) -= vxx;
+          (*particleVirial)(j,1) -= vyy;
+          (*particleVirial)(j,2) -= vzz;
+          (*particleVirial)(j,3) -= vyz;
+          (*particleVirial)(j,4) -= vxz;
+          (*particleVirial)(j,5) -= vxy;
+          (*particleVirial)(k,0) -= vxx;
+          (*particleVirial)(k,1) -= vyy;
+          (*particleVirial)(k,2) -= vzz;
+          (*particleVirial)(k,3) -= vyz;
+          (*particleVirial)(k,4) -= vxz;
+          (*particleVirial)(k,5) -= vxy;
+        }
       }
     }
+  }
+  // Sum up virials.  TODO:   this needs forces in any case!        
+  if (virial) {
+    for (int i = 0; i != n_atoms; ++i) {
+      virial[0] -= (*forces)(i,0) * atom_coords(i,0);
+      virial[1] -= (*forces)(i,1) * atom_coords(i,1);
+      virial[2] -= (*forces)(i,2) * atom_coords(i,2);
+      virial[3] -= (*forces)(i,2) * atom_coords(i,1);
+      virial[4] -= (*forces)(i,2) * atom_coords(i,0);
+      virial[5] -= (*forces)(i,1) * atom_coords(i,0);
+    }
+    for (int i = 0; i != 6; ++i)
+      virial[i] *= 0.5;
   }
 }
 

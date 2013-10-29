@@ -1,4 +1,8 @@
+* at the moment calculating the virial also needs forces to be calculated!
+
 * use assert() macro to check bounds etc and disable for release builds
+
+* remove code duplication (e.g. forces/virial in compute())
 
 * can the output of getm_compute() be assumed to be constant or not?
 
@@ -19,8 +23,10 @@
 ** benchmark against LAMMPS native impl.
 
 * run several tests to compare to LAMMPS and verify stuff...
-** energies and forces seem good, see ~/Desktop/KCC/lammps-ref/buncha
+** energies and forces
+** pressure (virial)
 ** also run the derivative test
+** ...
 
 * plug into LAMMPS (works easily out of the box!!!)
 
