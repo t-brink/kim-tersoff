@@ -83,11 +83,14 @@ static int compute(KIM_API_model** kimmdl) {
   }
 
   const KimIndices& ki = tersoff->kim_indices;
-  int compute_energy, compute_particleEnergy, compute_forces;
-  kim_model.getm_compute_by_index(&error, 3*3,
+  int compute_energy, compute_particleEnergy, compute_forces,
+    compute_virial, compute_particleVirial;
+  kim_model.getm_compute_by_index(&error, 5*3,
                                   ki.energy, &compute_energy, 1,
                                   ki.particleEnergy, &compute_particleEnergy, 1,
-                                  ki.forces, &compute_forces, 1
+                                  ki.forces, &compute_forces, 1,
+                                  ki.virial, &compute_virial, 1,
+                                  ki.particleVirial, &compute_particleVirial, 1
                                   );
   if (error != KIM_STATUS_OK) {
     kim_model.report_error(__LINE__, __FILE__, "KIM_API_getm_compute",
@@ -97,20 +100,25 @@ static int compute(KIM_API_model** kimmdl) {
 
   // Get model input and requested outputs.
   int* n_atoms;
-  int* n_contrib;
+//  int* n_contrib;
   int* atom_types; // 1D array
   double* c;
   double* energy;
   double* particle_energy;
   double* f;
-  kim_model.getm_data_by_index(&error, 6*3,
+  double* virial;
+  double* particleVirial_;
+  kim_model.getm_data_by_index(&error, 8*3,
                                ki.numberOfParticles, &n_atoms, 1,
                                ki.particleTypes, &atom_types, 1,
                                ki.coordinates, &c, 1,
                                ki.energy, &energy, compute_energy,
                                ki.particleEnergy, &particle_energy,
                                                   compute_particleEnergy,
-                               ki.forces, &f, compute_forces
+                               ki.forces, &f, compute_forces,
+                               ki.virial, &virial, compute_virial,
+                               ki.particleVirial, &particleVirial_,
+                                                  compute_particleVirial
                                );
   if (error != KIM_STATUS_OK) {
     kim_model.report_error(__LINE__, __FILE__, "KIM_API_getm_data_by_index",
@@ -124,6 +132,11 @@ static int compute(KIM_API_model** kimmdl) {
     particle_energy = NULL;
   Array2D<double> forces(f, *n_atoms, 3);
   Array2D<double>* forces_ptr = compute_forces ? &forces : NULL;
+  if (!compute_virial)
+    virial = NULL;
+  Array2D<double> particleVirial(particleVirial_, *n_atoms, 6);
+  Array2D<double>* particleVirial_ptr =
+    compute_particleVirial ? &particleVirial : NULL;
 
   // Calculate values.
   try {
@@ -150,7 +163,8 @@ static int compute(KIM_API_model** kimmdl) {
     tersoff->compute(kim_model, use_neighbor_list, use_distvec,
                      ki.neigh_access_mode,
                      *n_atoms, atom_types, coord,
-                     energy, particle_energy, forces_ptr);
+                     energy, particle_energy, forces_ptr,
+                     virial, particleVirial_ptr);
   } catch (const exception& e) { // TODO: the const_cast is just
                                  // because of deficiencies in the KIM
                                  // API, which takes a char* instead
@@ -266,13 +280,15 @@ int model_driver_init(void* km, // The KIM model object
 
   // Get KIM indices for efficiency.
   KimIndices kim_indices;
-  kim_model.getm_index(&error, 6*3,
+  kim_model.getm_index(&error, 8*3,
                        "numberOfParticles", &kim_indices.numberOfParticles, 1,
                        "particleTypes", &kim_indices.particleTypes, 1,
                        "coordinates", &kim_indices.coordinates, 1,
                        "energy", &kim_indices.energy, 1,
                        "particleEnergy", &kim_indices.particleEnergy, 1,
-                       "forces", &kim_indices.forces, 1
+                       "forces", &kim_indices.forces, 1,
+                       "virial", &kim_indices.virial, 1,
+                       "particleVirial", &kim_indices.particleVirial, 1
                        );
   if (error != KIM_STATUS_OK) {
     kim_model.report_error(__LINE__, __FILE__, "KIM_API_getm_index",

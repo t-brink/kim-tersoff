@@ -95,6 +95,8 @@ cutoff               double    length    []
 energy               double    energy    []                    optional
 forces               double    force     [numberOfParticles,3] optional
 particleEnergy       double    energy    [numberOfParticles]   optional
+virial               double    energy    [6]                   optional
+particleVirial       double    energy    [numberOfParticles,6] optional
 
 
 ## Parameters ##########################################################

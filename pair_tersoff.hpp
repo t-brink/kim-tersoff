@@ -62,6 +62,8 @@ const double pi_4 = 0.78539816339744830962;  /* pi/4 */
     //int compute_particleEnergy; // was particleEnergy requested?
     int forces;
     //int compute_forces; // was forces requested?
+    int virial;
+    int particleVirial;
 
     // Non-index stuff.
     KIM_NBC nbc;
@@ -85,7 +87,8 @@ class PairTersoff /*: public Pair*/ {
   virtual ~PairTersoff();
   void compute(KIM_API_model&, bool, bool, KIM_IterLoca,
                int, const int*, const Array2D<double>&,
-               double*, double*, Array2D<double>*) const;
+               double*, double*, Array2D<double>*,
+               double*, Array2D<double>*) const;
   void prepare_params();
   double cutoff() const {
     return max_cutoff;

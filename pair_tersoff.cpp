@@ -71,7 +71,9 @@ void PairTersoff::compute(KIM_API_model& kim_model,
                           const int* atom_types,
                           const Array2D<double>& atom_coords,
                           double* energy, double* atom_energy,
-                          Array2D<double>* forces) const
+                          Array2D<double>* forces,
+                          double* virial,
+                          Array2D<double>* particleVirial) const
 {
   int ii;          // Iteration over all atoms.
   int error;       // KIM error code.
