@@ -1,5 +1,7 @@
 * at the moment calculating the virial also needs forces to be calculated!
 
+* particleVirial works perhaps, virial not
+
 * use assert() macro to check bounds etc and disable for release builds
 
 * remove code duplication (e.g. forces/virial in compute())

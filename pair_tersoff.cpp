@@ -342,12 +342,19 @@ void PairTersoff::compute(KIM_API_model& kim_model,
         }
 
         if (particleVirial) {
-          (*particleVirial)(i,0) += delr_ij[0] * fx;
-          (*particleVirial)(i,1) += delr_ij[1] * fy;
-          (*particleVirial)(i,2) += delr_ij[2] * fz;
-          (*particleVirial)(i,3) += delr_ij[1] * fz; // yz
-          (*particleVirial)(i,4) += delr_ij[0] * fz; // xz
-          (*particleVirial)(i,5) += delr_ij[0] * fy; // xy
+          (*particleVirial)(i,0) += 0.5 * delr_ij[0] * fx;
+          (*particleVirial)(i,1) += 0.5 * delr_ij[1] * fy;
+          (*particleVirial)(i,2) += 0.5 * delr_ij[2] * fz;
+          (*particleVirial)(i,3) += 0.5 * delr_ij[1] * fz; // yz
+          (*particleVirial)(i,4) += 0.5 * delr_ij[0] * fz; // xz
+          (*particleVirial)(i,5) += 0.5 * delr_ij[0] * fy; // xy
+
+          (*particleVirial)(j,0) += 0.5 * delr_ij[0] * fx;
+          (*particleVirial)(j,1) += 0.5 * delr_ij[1] * fy;
+          (*particleVirial)(j,2) += 0.5 * delr_ij[2] * fz;
+          (*particleVirial)(j,3) += 0.5 * delr_ij[1] * fz; // yz
+          (*particleVirial)(j,4) += 0.5 * delr_ij[0] * fz; // xz
+          (*particleVirial)(j,5) += 0.5 * delr_ij[0] * fy; // xy
         }
       }
 
@@ -409,24 +416,26 @@ void PairTersoff::compute(KIM_API_model& kim_model,
         }
 
         if (particleVirial) {
-          double vxx = 1.0/3.0 * (delr_ij[0]*fj[0] + delr_ik[0]*fk[0]);
-          double vyy = 1.0/3.0 * (delr_ij[1]*fj[1] + delr_ik[1]*fk[1]);
-          double vzz = 1.0/3.0 * (delr_ij[2]*fj[2] + delr_ik[2]*fk[2]);
-          double vyz = 1.0/3.0 * (delr_ij[1]*fj[2] + delr_ik[1]*fk[2]);
-          double vxz = 1.0/3.0 * (delr_ij[0]*fj[2] + delr_ik[0]*fk[2]);
-          double vxy = 1.0/3.0 * (delr_ij[0]*fj[1] + delr_ik[0]*fk[1]);
+          const double vxx = 1.0/3.0 * (delr_ij[0]*fj[0] + delr_ik[0]*fk[0]);
+          const double vyy = 1.0/3.0 * (delr_ij[1]*fj[1] + delr_ik[1]*fk[1]);
+          const double vzz = 1.0/3.0 * (delr_ij[2]*fj[2] + delr_ik[2]*fk[2]);
+          const double vyz = 1.0/3.0 * (delr_ij[1]*fj[2] + delr_ik[1]*fk[2]);
+          const double vxz = 1.0/3.0 * (delr_ij[0]*fj[2] + delr_ik[0]*fk[2]);
+          const double vxy = 1.0/3.0 * (delr_ij[0]*fj[1] + delr_ik[0]*fk[1]);
           (*particleVirial)(i,0) -= vxx;
           (*particleVirial)(i,1) -= vyy;
           (*particleVirial)(i,2) -= vzz;
           (*particleVirial)(i,3) -= vyz;
           (*particleVirial)(i,4) -= vxz;
           (*particleVirial)(i,5) -= vxy;
+
           (*particleVirial)(j,0) -= vxx;
           (*particleVirial)(j,1) -= vyy;
           (*particleVirial)(j,2) -= vzz;
           (*particleVirial)(j,3) -= vyz;
           (*particleVirial)(j,4) -= vxz;
           (*particleVirial)(j,5) -= vxy;
+
           (*particleVirial)(k,0) -= vxx;
           (*particleVirial)(k,1) -= vyy;
           (*particleVirial)(k,2) -= vzz;
