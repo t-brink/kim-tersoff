@@ -342,12 +342,12 @@ void PairTersoff::compute(KIM_API_model& kim_model,
         }
 
         if (particleVirial) {
-          (*particleVirial)(i,0) += 0.5 * delr_ij[0] * fx;
-          (*particleVirial)(i,1) += 0.5 * delr_ij[1] * fy;
-          (*particleVirial)(i,2) += 0.5 * delr_ij[2] * fz;
-          (*particleVirial)(i,3) += 0.5 * delr_ij[1] * fz; // yz
-          (*particleVirial)(i,4) += 0.5 * delr_ij[0] * fz; // xz
-          (*particleVirial)(i,5) += 0.5 * delr_ij[0] * fy; // xy
+          (*particleVirial)(i,0) += delr_ij[0] * fx;
+          (*particleVirial)(i,1) += delr_ij[1] * fy;
+          (*particleVirial)(i,2) += delr_ij[2] * fz;
+          (*particleVirial)(i,3) += delr_ij[1] * fz; // yz
+          (*particleVirial)(i,4) += delr_ij[0] * fz; // xz
+          (*particleVirial)(i,5) += delr_ij[0] * fy; // xy
         }
       }
 
