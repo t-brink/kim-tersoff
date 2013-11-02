@@ -17,15 +17,11 @@
 
 * MI_OPBC_F
 
-* optimize (e.g. c²/d² is calculated over and over again)
-** benchmark against LAMMPS native impl.
-
-* run several tests to compare to LAMMPS and verify stuff...
-** energies and forces
-** pressure (virial)
-** also run the derivative test
-** ...
+* optimize
+** parts of force calculation are still done even if not needed
 
 * test suite
 
 * README
+
+* comment code better

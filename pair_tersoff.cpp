@@ -94,6 +94,23 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       atom_energy[i] = 0.0;
     }
 
+  // Reset forces.
+  if (forces)
+    for (int i = 0; i != n_atoms; ++i) {
+      (*forces)(i, 0) = 0.0;
+      (*forces)(i, 1) = 0.0;
+      (*forces)(i, 2) = 0.0;
+    }
+
+  // Reset virial.
+  if (virial)
+    for (int i = 0; i != 6; ++i)
+      virial[i] = 0.0;
+  if (particleVirial)
+    for (int i = 0; i != n_atoms; ++i)
+      for (int j = 0; j != 6; ++j)
+        (*particleVirial)(i, j) = 0.0;
+
   // In iterator mode: reset the iterator.
   if (use_neighbor_list && access_mode == KIM_ITERATOR_MODE) {
     error =
@@ -114,23 +131,6 @@ void PairTersoff::compute(KIM_API_model& kim_model,
     n_neigh = n_atoms;
     distvec = NULL;
   }
-
-  // Reset forces.
-  if (forces)
-    for (int i = 0; i != n_atoms; ++i) {
-      (*forces)(i, 0) = 0.0;
-      (*forces)(i, 1) = 0.0;
-      (*forces)(i, 2) = 0.0;
-    }
-
-  // Reset virial.
-  if (virial)
-    for (int i = 0; i != 6; ++i)
-      virial[i] = 0.0;
-  if (particleVirial)
-    for (int i = 0; i != n_atoms; ++i)
-      for (int j = 0; j != 6; ++j)
-        (*particleVirial)(i, j) = 0.0;
 
   // loop over full neighbor list of my atoms
 
@@ -232,22 +232,31 @@ void PairTersoff::compute(KIM_API_model& kim_model,
           (*forces)(i,2) -= fz;
         }
 
-        if (virial) {
-          virial[0] -= 0.5 * delr_ij[0] * fx;
-          virial[1] -= 0.5 * delr_ij[1] * fy;
-          virial[2] -= 0.5 * delr_ij[2] * fz;
-          virial[3] -= 0.5 * delr_ij[1] * fz; // yz
-          virial[4] -= 0.5 * delr_ij[0] * fz; // xz
-          virial[5] -= 0.5 * delr_ij[0] * fy; // xy
-        }
+        if (virial || particleVirial) {
+          const double vxx = 0.5 * delr_ij[0] * fx;
+          const double vyy = 0.5 * delr_ij[1] * fy;
+          const double vzz = 0.5 * delr_ij[2] * fz;
+          const double vyz = 0.5 * delr_ij[1] * fz;
+          const double vxz = 0.5 * delr_ij[0] * fz;
+          const double vxy = 0.5 * delr_ij[0] * fy;
 
-        if (particleVirial) {
-          (*particleVirial)(i,0) -= 0.5 * delr_ij[0] * fx;
-          (*particleVirial)(i,1) -= 0.5 * delr_ij[1] * fy;
-          (*particleVirial)(i,2) -= 0.5 * delr_ij[2] * fz;
-          (*particleVirial)(i,3) -= 0.5 * delr_ij[1] * fz; // yz
-          (*particleVirial)(i,4) -= 0.5 * delr_ij[0] * fz; // xz
-          (*particleVirial)(i,5) -= 0.5 * delr_ij[0] * fy; // xy
+          if (virial) {
+            virial[0] -= vxx;
+            virial[1] -= vyy;
+            virial[2] -= vzz;
+            virial[3] -= vyz;
+            virial[4] -= vxz;
+            virial[5] -= vxy;
+          }
+
+          if (particleVirial) {
+            (*particleVirial)(i,0) -= vxx;
+            (*particleVirial)(i,1) -= vyy;
+            (*particleVirial)(i,2) -= vzz;
+            (*particleVirial)(i,3) -= vyz;
+            (*particleVirial)(i,4) -= vxz;
+            (*particleVirial)(i,5) -= vxy;
+          }
         }
       }
 
@@ -334,134 +343,152 @@ void PairTersoff::compute(KIM_API_model& kim_model,
           (*forces)(j,2) -= fz;
         }
 
-        if (virial) {
-          virial[0] += delr_ij[0] * fx;
-          virial[1] += delr_ij[1] * fy;
-          virial[2] += delr_ij[2] * fz;
-          virial[3] += delr_ij[1] * fz; // yz
-          virial[4] += delr_ij[0] * fz; // xz
-          virial[5] += delr_ij[0] * fy; // xy
-        }
+        if (virial || particleVirial) {
+          const double vxx = delr_ij[0] * fx;
+          const double vyy = delr_ij[1] * fy;
+          const double vzz = delr_ij[2] * fz;
+          const double vyz = delr_ij[1] * fz; // yz
+          const double vxz = delr_ij[0] * fz; // xz
+          const double vxy = delr_ij[0] * fy; // xy
 
-        if (particleVirial) {
-          (*particleVirial)(i,0) += 0.5 * delr_ij[0] * fx;
-          (*particleVirial)(i,1) += 0.5 * delr_ij[1] * fy;
-          (*particleVirial)(i,2) += 0.5 * delr_ij[2] * fz;
-          (*particleVirial)(i,3) += 0.5 * delr_ij[1] * fz; // yz
-          (*particleVirial)(i,4) += 0.5 * delr_ij[0] * fz; // xz
-          (*particleVirial)(i,5) += 0.5 * delr_ij[0] * fy; // xy
+          if (virial) {
+            virial[0] += vxx;
+            virial[1] += vyy;
+            virial[2] += vzz;
+            virial[3] += vyz;
+            virial[4] += vxz;
+            virial[5] += vxy;
+          }
 
-          (*particleVirial)(j,0) += 0.5 * delr_ij[0] * fx;
-          (*particleVirial)(j,1) += 0.5 * delr_ij[1] * fy;
-          (*particleVirial)(j,2) += 0.5 * delr_ij[2] * fz;
-          (*particleVirial)(j,3) += 0.5 * delr_ij[1] * fz; // yz
-          (*particleVirial)(j,4) += 0.5 * delr_ij[0] * fz; // xz
-          (*particleVirial)(j,5) += 0.5 * delr_ij[0] * fy; // xy
+          if (particleVirial) {
+            const double vxx2 = 0.5 * vxx;
+            const double vyy2 = 0.5 * vyy;
+            const double vzz2 = 0.5 * vzz;
+            const double vyz2 = 0.5 * vyz;
+            const double vxz2 = 0.5 * vxz;
+            const double vxy2 = 0.5 * vxy;
+
+            (*particleVirial)(i,0) += vxx2;
+            (*particleVirial)(i,1) += vyy2;
+            (*particleVirial)(i,2) += vzz2;
+            (*particleVirial)(i,3) += vyz2;
+            (*particleVirial)(i,4) += vxz2;
+            (*particleVirial)(i,5) += vxy2;
+
+            (*particleVirial)(j,0) += vxx2;
+            (*particleVirial)(j,1) += vyy2;
+            (*particleVirial)(j,2) += vzz2;
+            (*particleVirial)(j,3) += vyz2;
+            (*particleVirial)(j,4) += vxz2;
+            (*particleVirial)(j,5) += vxy2;
+          }
         }
       }
 
       // attractive term via loop over k
 
-      for (int kk = 0; kk != n_neigh; ++kk) {
-        if (jj == kk) continue;
-        int k = use_neighbor_list ? neighbors[kk] : kk;
-        if (!use_neighbor_list && i == k)
-          // Needed in cluster mode, as there is no neighbor list
-          // which will make sure i = k doesn't happen!
-          continue;
-        const int ktype = atom_types[k];
+      if (forces || virial || particleVirial) {
+        for (int kk = 0; kk != n_neigh; ++kk) {
+          if (jj == kk) continue;
+          int k = use_neighbor_list ? neighbors[kk] : kk;
+          if (!use_neighbor_list && i == k)
+            // Needed in cluster mode, as there is no neighbor list
+            // which will make sure i = k doesn't happen!
+            continue;
+          const int ktype = atom_types[k];
 
-        double delr_ik[3];
-        if (use_distvec) {
-          delr_ik[0] = distvec[kk*3 + 0];
-          delr_ik[1] = distvec[kk*3 + 1];
-          delr_ik[2] = distvec[kk*3 + 2];
-        } else {
-          delr_ik[0] = atom_coords(k,0) - xtmp;
-          delr_ik[1] = atom_coords(k,1) - ytmp;
-          delr_ik[2] = atom_coords(k,2) - ztmp;
-        }
-        const double rsq_ik = delr_ik[0]*delr_ik[0]
-                            + delr_ik[1]*delr_ik[1]
-                            + delr_ik[2]*delr_ik[2];
-        const double cutsq = params(itype,jtype,ktype).cutsq;
-        if (rsq_ik > cutsq) continue;
+          double delr_ik[3];
+          if (use_distvec) {
+            delr_ik[0] = distvec[kk*3 + 0];
+            delr_ik[1] = distvec[kk*3 + 1];
+            delr_ik[2] = distvec[kk*3 + 2];
+          } else {
+            delr_ik[0] = atom_coords(k,0) - xtmp;
+            delr_ik[1] = atom_coords(k,1) - ytmp;
+            delr_ik[2] = atom_coords(k,2) - ztmp;
+          }
+          const double rsq_ik = delr_ik[0]*delr_ik[0]
+            + delr_ik[1]*delr_ik[1]
+            + delr_ik[2]*delr_ik[2];
+          const double cutsq = params(itype,jtype,ktype).cutsq;
+          if (rsq_ik > cutsq) continue;
 
-        const double r_ik = sqrt(rsq_ik);
+          const double r_ik = sqrt(rsq_ik);
 
-        const double R = params(itype,jtype,ktype).R;
-        const double D = params(itype,jtype,ktype).D;
-        const int m = params(itype,jtype,ktype).m;
-        const double lam3 = params(itype,jtype,ktype).lam3;
-        const double gamma = params(itype,jtype,ktype).gamma;
-        const double c2 = params(itype,jtype,ktype).c2;
-        const double d2 = params(itype,jtype,ktype).d2;
-        const double c2_d2 = params(itype,jtype,ktype).c2_d2;
-        const double h = params(itype,jtype,ktype).h;
+          const double R = params(itype,jtype,ktype).R;
+          const double D = params(itype,jtype,ktype).D;
+          const int m = params(itype,jtype,ktype).m;
+          const double lam3 = params(itype,jtype,ktype).lam3;
+          const double gamma = params(itype,jtype,ktype).gamma;
+          const double c2 = params(itype,jtype,ktype).c2;
+          const double d2 = params(itype,jtype,ktype).d2;
+          const double c2_d2 = params(itype,jtype,ktype).c2_d2;
+          const double h = params(itype,jtype,ktype).h;
 
-        double fi[3], fj[3], fk[3];
+          double fi[3], fj[3], fk[3];
 
-        attractive(prefactor, r_ij, r_ik,
-                   R, D, m, lam3, gamma, c2, d2, c2_d2, h,
-                   delr_ij, delr_ik, fi, fj, fk);
+          attractive(prefactor, r_ij, r_ik,
+                     R, D, m, lam3, gamma, c2, d2, c2_d2, h,
+                     delr_ij, delr_ik, fi, fj, fk);
 
-        if (forces) {
-          (*forces)(i,0) += fi[0];
-          (*forces)(i,1) += fi[1];
-          (*forces)(i,2) += fi[2];
-          (*forces)(j,0) += fj[0];
-          (*forces)(j,1) += fj[1];
-          (*forces)(j,2) += fj[2];
-          (*forces)(k,0) += fk[0];
-          (*forces)(k,1) += fk[1];
-          (*forces)(k,2) += fk[2];
-        }
-
-        if (virial || particleVirial) {
-          const double vxx = delr_ij[0]*fj[0] + delr_ik[0]*fk[0];
-          const double vyy = delr_ij[1]*fj[1] + delr_ik[1]*fk[1];
-          const double vzz = delr_ij[2]*fj[2] + delr_ik[2]*fk[2];
-          const double vyz = delr_ij[1]*fj[2] + delr_ik[1]*fk[2];
-          const double vxz = delr_ij[0]*fj[2] + delr_ik[0]*fk[2];
-          const double vxy = delr_ij[0]*fj[1] + delr_ik[0]*fk[1];
-
-          if (virial) {
-            virial[0] -= vxx;
-            virial[1] -= vyy;
-            virial[2] -= vzz;
-            virial[3] -= vyz;
-            virial[4] -= vxz;
-            virial[5] -= vxy;
+          if (forces) {
+            (*forces)(i,0) += fi[0];
+            (*forces)(i,1) += fi[1];
+            (*forces)(i,2) += fi[2];
+            (*forces)(j,0) += fj[0];
+            (*forces)(j,1) += fj[1];
+            (*forces)(j,2) += fj[2];
+            (*forces)(k,0) += fk[0];
+            (*forces)(k,1) += fk[1];
+            (*forces)(k,2) += fk[2];
           }
 
-          if (particleVirial) {
-            const double vxx3 = 1.0/3.0 * vxx;
-            const double vyy3 = 1.0/3.0 * vyy;
-            const double vzz3 = 1.0/3.0 * vzz;
-            const double vyz3 = 1.0/3.0 * vyz;
-            const double vxz3 = 1.0/3.0 * vxz;
-            const double vxy3 = 1.0/3.0 * vxy;
+          if (virial || particleVirial) {
+            const double vxx = delr_ij[0]*fj[0] + delr_ik[0]*fk[0];
+            const double vyy = delr_ij[1]*fj[1] + delr_ik[1]*fk[1];
+            const double vzz = delr_ij[2]*fj[2] + delr_ik[2]*fk[2];
+            const double vyz = delr_ij[1]*fj[2] + delr_ik[1]*fk[2];
+            const double vxz = delr_ij[0]*fj[2] + delr_ik[0]*fk[2];
+            const double vxy = delr_ij[0]*fj[1] + delr_ik[0]*fk[1];
 
-            (*particleVirial)(i,0) -= vxx3;
-            (*particleVirial)(i,1) -= vyy3;
-            (*particleVirial)(i,2) -= vzz3;
-            (*particleVirial)(i,3) -= vyz3;
-            (*particleVirial)(i,4) -= vxz3;
-            (*particleVirial)(i,5) -= vxy3;
+            if (virial) {
+              virial[0] -= vxx;
+              virial[1] -= vyy;
+              virial[2] -= vzz;
+              virial[3] -= vyz;
+              virial[4] -= vxz;
+              virial[5] -= vxy;
+            }
 
-            (*particleVirial)(j,0) -= vxx3;
-            (*particleVirial)(j,1) -= vyy3;
-            (*particleVirial)(j,2) -= vzz3;
-            (*particleVirial)(j,3) -= vyz3;
-            (*particleVirial)(j,4) -= vxz3;
-            (*particleVirial)(j,5) -= vxy3;
+            if (particleVirial) {
+              const double vxx3 = 1.0/3.0 * vxx;
+              const double vyy3 = 1.0/3.0 * vyy;
+              const double vzz3 = 1.0/3.0 * vzz;
+              const double vyz3 = 1.0/3.0 * vyz;
+              const double vxz3 = 1.0/3.0 * vxz;
+              const double vxy3 = 1.0/3.0 * vxy;
 
-            (*particleVirial)(k,0) -= vxx3;
-            (*particleVirial)(k,1) -= vyy3;
-            (*particleVirial)(k,2) -= vzz3;
-            (*particleVirial)(k,3) -= vyz3;
-            (*particleVirial)(k,4) -= vxz3;
-            (*particleVirial)(k,5) -= vxy3;
+              (*particleVirial)(i,0) -= vxx3;
+              (*particleVirial)(i,1) -= vyy3;
+              (*particleVirial)(i,2) -= vzz3;
+              (*particleVirial)(i,3) -= vyz3;
+              (*particleVirial)(i,4) -= vxz3;
+              (*particleVirial)(i,5) -= vxy3;
+
+              (*particleVirial)(j,0) -= vxx3;
+              (*particleVirial)(j,1) -= vyy3;
+              (*particleVirial)(j,2) -= vzz3;
+              (*particleVirial)(j,3) -= vyz3;
+              (*particleVirial)(j,4) -= vxz3;
+              (*particleVirial)(j,5) -= vxy3;
+
+              (*particleVirial)(k,0) -= vxx3;
+              (*particleVirial)(k,1) -= vyy3;
+              (*particleVirial)(k,2) -= vzz3;
+              (*particleVirial)(k,3) -= vyz3;
+              (*particleVirial)(k,4) -= vxz3;
+              (*particleVirial)(k,5) -= vxy3;
+            }
           }
         }
       }
