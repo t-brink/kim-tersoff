@@ -1,5 +1,3 @@
-* particle energy may be wrong
-
 * use assert() macro to check bounds etc and disable for release builds
 
 * remove code duplication (e.g. forces/virial in compute())

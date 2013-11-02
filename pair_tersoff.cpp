@@ -315,7 +315,9 @@ void PairTersoff::compute(KIM_API_model& kim_model,
         *energy += evdwl;
 
       if (atom_energy) {
-        atom_energy[i] += evdwl;
+        const double en = 0.5 * evdwl;
+        atom_energy[i] += en;
+        atom_energy[j] += en;
       }
 
       if (forces || virial || particleVirial) {
