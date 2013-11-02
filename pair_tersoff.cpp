@@ -174,7 +174,6 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       ytmp = atom_coords(i,1);
       ztmp = atom_coords(i,2);
     }
-    double fx, fy, fz; // Temporary force variables.
 
     for (int jj = 0; jj != n_neigh; ++jj) {
       int j = use_neighbor_list ? neighbors[jj] : jj;
@@ -222,9 +221,9 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       }
 
       if (forces || virial || particleVirial) {
-        fx = delr_ij[0]*fpair;
-        fy = delr_ij[1]*fpair;
-        fz = delr_ij[2]*fpair;
+        const double fx = delr_ij[0]*fpair;
+        const double fy = delr_ij[1]*fpair;
+        const double fz = delr_ij[2]*fpair;
 
         if (forces) {
           (*forces)(i,0) -= fx;
@@ -330,9 +329,9 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       }
 
       if (forces || virial || particleVirial) {
-        fx = delr_ij[0]*fzeta;
-        fy = delr_ij[1]*fzeta;
-        fz = delr_ij[2]*fzeta;
+        const double fx = delr_ij[0]*fzeta;
+        const double fy = delr_ij[1]*fzeta;
+        const double fz = delr_ij[2]*fzeta;
 
         if (forces) {
           (*forces)(i,0) += fx;
@@ -810,7 +809,7 @@ double PairTersoff::ters_fa_d(double r, double fc, double fc_d,
 double PairTersoff::ters_bij(double zeta, double beta, double n,
                              const double n_precomp[4]) const
 {
-  double tmp = beta * zeta;
+  const double tmp = beta * zeta;
   if (tmp > n_precomp[0]) return 1.0/sqrt(tmp);
   if (tmp > n_precomp[1]) return (1.0 - pow(tmp,-n) / (2.0*n))/sqrt(tmp);
   if (tmp < n_precomp[3]) return 1.0;
@@ -823,7 +822,7 @@ double PairTersoff::ters_bij(double zeta, double beta, double n,
 double PairTersoff::ters_bij_d(double zeta, double beta, double n,
                                const double n_precomp[4]) const
 {
-  double tmp = beta * zeta;
+  const double tmp = beta * zeta;
   if (tmp > n_precomp[0]) return beta * -0.5*pow(tmp,-1.5);
   if (tmp > n_precomp[1]) return beta * (-0.5*pow(tmp,-1.5) *
                                (1.0 - 0.5*(1.0 +  1.0/(2.0*n)) *
@@ -831,7 +830,7 @@ double PairTersoff::ters_bij_d(double zeta, double beta, double n,
   if (tmp < n_precomp[3]) return 0.0;
   if (tmp < n_precomp[2]) return -0.5*beta * pow(tmp, n-1.0);
 
-  double tmp_n = pow(tmp, n);
+  const double tmp_n = pow(tmp, n);
   return -0.5 * pow(1.0+tmp_n, -1.0-(1.0/(2.0*n)))*tmp_n / zeta;
 }
 
@@ -845,11 +844,11 @@ void PairTersoff::ters_zetaterm_d(double prefactor,
                                   double *rik_hat, double rik,
                                   double *dri, double *drj, double *drk) const
 {
-  double gijk,gijk_d,ex_delr,ex_delr_d,fc,dfc,cos_theta,tmp;
+  double ex_delr,ex_delr_d,tmp;
   double dcosdri[3],dcosdrj[3],dcosdrk[3];
 
-  fc = ters_fc(rik,R,D);
-  dfc = ters_fc_d(rik,R,D);
+  const double fc = ters_fc(rik,R,D);
+  const double dfc = ters_fc_d(rik,R,D);
   if (m == 3) tmp = pow(lam3 * (rij-rik), 3);
   else tmp = lam3 * (rij-rik); // m == 1
 
@@ -861,9 +860,9 @@ void PairTersoff::ters_zetaterm_d(double prefactor,
     ex_delr_d = 3.0*pow(lam3, 3) * pow(rij-rik, 2)*ex_delr;
   else ex_delr_d = lam3 * ex_delr; // m == 1
 
-  cos_theta = vec3_dot(rij_hat,rik_hat);
-  gijk = ters_gijk(cos_theta, gamma, c2, d2, c2_d2, h);
-  gijk_d = ters_gijk_d(cos_theta, gamma, c2, d2, h);
+  const double cos_theta = vec3_dot(rij_hat,rik_hat);
+  const double gijk = ters_gijk(cos_theta, gamma, c2, d2, c2_d2, h);
+  const double gijk_d = ters_gijk_d(cos_theta, gamma, c2, d2, h);
   costheta_d(rij_hat,rij,rik_hat,rik,dcosdri,dcosdrj,dcosdrk);
 
   // compute the derivative wrt Ri
@@ -904,7 +903,7 @@ void PairTersoff::costheta_d(double *rij_hat, double rij,
 {
   // first element is devative wrt Ri, second wrt Rj, third wrt Rk
 
-  double cos_theta = vec3_dot(rij_hat,rik_hat);
+  const double cos_theta = vec3_dot(rij_hat,rik_hat);
 
   vec3_scaleadd(-cos_theta,rij_hat,rik_hat,drj);
   vec3_scale(1.0/rij,drj,drj);
