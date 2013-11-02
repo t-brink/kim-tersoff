@@ -1,6 +1,4 @@
-* at the moment calculating the virial also needs forces to be calculated!
-
-* particleVirial works perhaps, virial not
+* particle energy may be wrong
 
 * use assert() macro to check bounds etc and disable for release builds
 
@@ -30,6 +28,6 @@
 ** also run the derivative test
 ** ...
 
-* plug into LAMMPS (works easily out of the box!!!)
+* test suite
 
 * README

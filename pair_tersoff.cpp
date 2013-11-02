@@ -233,12 +233,12 @@ void PairTersoff::compute(KIM_API_model& kim_model,
         }
 
         if (virial) {
-          virial[0] -= delr_ij[0] * fx;
-          virial[1] -= delr_ij[1] * fy;
-          virial[2] -= delr_ij[2] * fz;
-          virial[3] -= delr_ij[1] * fz; // yz
-          virial[4] -= delr_ij[0] * fz; // xz
-          virial[5] -= delr_ij[0] * fy; // xy
+          virial[0] -= 0.5 * delr_ij[0] * fx;
+          virial[1] -= 0.5 * delr_ij[1] * fy;
+          virial[2] -= 0.5 * delr_ij[2] * fz;
+          virial[3] -= 0.5 * delr_ij[1] * fz; // yz
+          virial[4] -= 0.5 * delr_ij[0] * fz; // xz
+          virial[5] -= 0.5 * delr_ij[0] * fy; // xy
         }
 
         if (particleVirial) {
@@ -415,49 +415,55 @@ void PairTersoff::compute(KIM_API_model& kim_model,
           (*forces)(k,2) += fk[2];
         }
 
-        if (particleVirial) {
-          const double vxx = 1.0/3.0 * (delr_ij[0]*fj[0] + delr_ik[0]*fk[0]);
-          const double vyy = 1.0/3.0 * (delr_ij[1]*fj[1] + delr_ik[1]*fk[1]);
-          const double vzz = 1.0/3.0 * (delr_ij[2]*fj[2] + delr_ik[2]*fk[2]);
-          const double vyz = 1.0/3.0 * (delr_ij[1]*fj[2] + delr_ik[1]*fk[2]);
-          const double vxz = 1.0/3.0 * (delr_ij[0]*fj[2] + delr_ik[0]*fk[2]);
-          const double vxy = 1.0/3.0 * (delr_ij[0]*fj[1] + delr_ik[0]*fk[1]);
-          (*particleVirial)(i,0) -= vxx;
-          (*particleVirial)(i,1) -= vyy;
-          (*particleVirial)(i,2) -= vzz;
-          (*particleVirial)(i,3) -= vyz;
-          (*particleVirial)(i,4) -= vxz;
-          (*particleVirial)(i,5) -= vxy;
+        if (virial || particleVirial) {
+          const double vxx = delr_ij[0]*fj[0] + delr_ik[0]*fk[0];
+          const double vyy = delr_ij[1]*fj[1] + delr_ik[1]*fk[1];
+          const double vzz = delr_ij[2]*fj[2] + delr_ik[2]*fk[2];
+          const double vyz = delr_ij[1]*fj[2] + delr_ik[1]*fk[2];
+          const double vxz = delr_ij[0]*fj[2] + delr_ik[0]*fk[2];
+          const double vxy = delr_ij[0]*fj[1] + delr_ik[0]*fk[1];
 
-          (*particleVirial)(j,0) -= vxx;
-          (*particleVirial)(j,1) -= vyy;
-          (*particleVirial)(j,2) -= vzz;
-          (*particleVirial)(j,3) -= vyz;
-          (*particleVirial)(j,4) -= vxz;
-          (*particleVirial)(j,5) -= vxy;
+          if (virial) {
+            virial[0] -= vxx;
+            virial[1] -= vyy;
+            virial[2] -= vzz;
+            virial[3] -= vyz;
+            virial[4] -= vxz;
+            virial[5] -= vxy;
+          }
 
-          (*particleVirial)(k,0) -= vxx;
-          (*particleVirial)(k,1) -= vyy;
-          (*particleVirial)(k,2) -= vzz;
-          (*particleVirial)(k,3) -= vyz;
-          (*particleVirial)(k,4) -= vxz;
-          (*particleVirial)(k,5) -= vxy;
+          if (particleVirial) {
+            const double vxx3 = 1.0/3.0 * vxx;
+            const double vyy3 = 1.0/3.0 * vyy;
+            const double vzz3 = 1.0/3.0 * vzz;
+            const double vyz3 = 1.0/3.0 * vyz;
+            const double vxz3 = 1.0/3.0 * vxz;
+            const double vxy3 = 1.0/3.0 * vxy;
+
+            (*particleVirial)(i,0) -= vxx3;
+            (*particleVirial)(i,1) -= vyy3;
+            (*particleVirial)(i,2) -= vzz3;
+            (*particleVirial)(i,3) -= vyz3;
+            (*particleVirial)(i,4) -= vxz3;
+            (*particleVirial)(i,5) -= vxy3;
+
+            (*particleVirial)(j,0) -= vxx3;
+            (*particleVirial)(j,1) -= vyy3;
+            (*particleVirial)(j,2) -= vzz3;
+            (*particleVirial)(j,3) -= vyz3;
+            (*particleVirial)(j,4) -= vxz3;
+            (*particleVirial)(j,5) -= vxy3;
+
+            (*particleVirial)(k,0) -= vxx3;
+            (*particleVirial)(k,1) -= vyy3;
+            (*particleVirial)(k,2) -= vzz3;
+            (*particleVirial)(k,3) -= vyz3;
+            (*particleVirial)(k,4) -= vxz3;
+            (*particleVirial)(k,5) -= vxy3;
+          }
         }
       }
     }
-  }
-  // Sum up virials.  TODO:   this needs forces in any case!        
-  if (virial) {
-    for (int i = 0; i != n_atoms; ++i) {
-      virial[0] -= (*forces)(i,0) * atom_coords(i,0);
-      virial[1] -= (*forces)(i,1) * atom_coords(i,1);
-      virial[2] -= (*forces)(i,2) * atom_coords(i,2);
-      virial[3] -= (*forces)(i,2) * atom_coords(i,1);
-      virial[4] -= (*forces)(i,2) * atom_coords(i,0);
-      virial[5] -= (*forces)(i,1) * atom_coords(i,0);
-    }
-    for (int i = 0; i != 6; ++i)
-      virial[i] *= 0.5;
   }
 }
 
