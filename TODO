@@ -1,7 +1,5 @@
 * use assert() macro to check bounds etc and disable for release builds
 
-* remove code duplication (e.g. forces/virial in compute())
-
 * can the output of getm_compute() be assumed to be constant or not?
 
 * publish parameters
@@ -19,6 +17,8 @@
 
 * optimize
 ** parts of force calculation are still done even if not needed
+** benchmark when running LAMMPS with MPI, to see if it's still faster
+   than the implementation in LAMMPS
 
 * test suite
 
