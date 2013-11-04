@@ -100,7 +100,6 @@ static int compute(KIM_API_model** kimmdl) {
 
   // Get model input and requested outputs.
   int* n_atoms;
-//  int* n_contrib;
   int* atom_types; // 1D array
   double* c;
   double* energy;

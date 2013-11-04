@@ -23,10 +23,6 @@
 #include <fstream>
 #include <sstream>
 
-// DEBUG
-//#include <iostream>
-// /DEBUG
-
 #include <KIM_API_status.h>
 
 using namespace model_driver_Tersoff;
