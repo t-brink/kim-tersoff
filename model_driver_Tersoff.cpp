@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2012,20132 Tobias Brink
+  Copyright (c) 2012,2013 Tobias Brink
 
   Permission is hereby granted, free of charge, to any person obtaining
   a copy of this software and associated documentation files (the
@@ -165,12 +165,8 @@ static int compute(KIM_API_model** kimmdl) {
                      *n_atoms, atom_types, coord,
                      energy, particle_energy, forces_ptr,
                      virial, particleVirial_ptr);
-  } catch (const exception& e) { // TODO: the const_cast is just
-                                 // because of deficiencies in the KIM
-                                 // API, which takes a char* instead
-                                 // of a const char*
-    kim_model.report_error(__LINE__, __FILE__, const_cast<char*>(e.what()),
-                           KIM_STATUS_FAIL);
+  } catch (const exception& e) {
+    kim_model.report_error(__LINE__, __FILE__, e.what(), KIM_STATUS_FAIL);
     return KIM_STATUS_FAIL;
   }
 
@@ -207,11 +203,8 @@ int model_driver_init(void* km, // The KIM model object
   }
   for (int i = 0; i != n_spec; ++i) {
     string spec_name(partcl_types + i*KIM_KEY_STRING_LENGTH);
-    // TODO: cast only because of deficiencies of the KIM API (const
-    // correctness violated!)
     int type_idx =
-      kim_model.get_partcl_type_code(const_cast<char*>(spec_name.c_str()),
-                                     &error);
+      kim_model.get_partcl_type_code(spec_name.c_str(), &error);
     if (error != KIM_STATUS_OK) {
       kim_model.report_error(__LINE__, __FILE__,
                              "KIM_API_get_partcl_type_code", error);
@@ -313,11 +306,9 @@ int model_driver_init(void* km, // The KIM model object
   else if (nbc == "CLUSTER")
     kim_indices.nbc = KIM_CLUSTER;
   else {
-    // TODO: const_cast is KIM_API fault, bla bla, see other
-    // occurences of this...
     kim_model.report_error(__LINE__, __FILE__,
-                           const_cast<char*>(("Unknown NBC: " + nbc +
-                                              ". What are you doing?").c_str()),
+                           ("Unknown NBC: " + nbc +
+                            ". What are you doing?").c_str(),
                            KIM_STATUS_FAIL);
     return KIM_STATUS_FAIL;
   }
@@ -354,12 +345,8 @@ int model_driver_init(void* km, // The KIM model object
     tersoff = new PairTersoff(param_filename, n_spec, spec_idx,
                               energy_conv, length_conv, inv_length_conv,
                               kim_indices);
-  } catch (const exception& e) { // TODO: the const_cast is just
-                                 // because of deficiencies in the KIM
-                                 // API, which takes a char* instead
-                                 // of a const char*
-    kim_model.report_error(__LINE__, __FILE__, const_cast<char*>(e.what()),
-                           KIM_STATUS_FAIL);
+  } catch (const exception& e) {
+    kim_model.report_error(__LINE__, __FILE__, e.what(), KIM_STATUS_FAIL);
     return KIM_STATUS_FAIL;
   }
 
