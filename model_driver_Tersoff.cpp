@@ -71,6 +71,30 @@ static int destroy(KIM_API_model** kimmdl) {
 }
 
 
+static int reinit(KIM_API_model** kimmdl) {
+  KIM_API_model& kim_model = **kimmdl;
+
+  int error;
+  PairTersoff* tersoff =
+    static_cast<PairTersoff*>(kim_model.get_model_buffer(&error));
+  if (error != KIM_STATUS_OK) {
+    kim_model.report_error(__LINE__, __FILE__, "KIM_API_get_model_buffer",
+                           error);
+    return error;
+  }
+
+  // Re-compute some pre-calculated values from new parameters.
+  try {
+    tersoff->prepare_params();
+  } catch (const exception& e) {
+    kim_model.report_error(__LINE__, __FILE__, e.what(), KIM_STATUS_FAIL);
+    return KIM_STATUS_FAIL;
+  }
+
+  return KIM_STATUS_OK;
+}
+
+
 static int compute(KIM_API_model** kimmdl) {
   KIM_API_model& kim_model = **kimmdl;
   int error;
