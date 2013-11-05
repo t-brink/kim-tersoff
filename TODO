@@ -16,8 +16,6 @@
 
 * optimize
 ** parts of force calculation are still done even if not needed
-** benchmark when running LAMMPS with MPI, to see if it's still faster
-   than the implementation in LAMMPS
 
 * test suite
 

@@ -188,7 +188,8 @@ void PairTersoff::compute(KIM_API_model& kim_model,
         delr_ij[2] = atom_coords(j,2) - ztmp;
         if (boxSideLengths)
           for (int d = 0; d != 3; ++d)
-            delr_ij[d] -= (delr_ij[d]/fabs(delr_ij[d]))*boxSideLengths[d];
+            if (abs(delr_ij[d]) > 0.5 * boxSideLengths[d])
+              delr_ij[d] -= (delr_ij[d]/abs(delr_ij[d]))*boxSideLengths[d];
       }
       const double rsq_ij = delr_ij[0]*delr_ij[0]
                           + delr_ij[1]*delr_ij[1]
@@ -285,7 +286,8 @@ void PairTersoff::compute(KIM_API_model& kim_model,
           delr_ik[2] = atom_coords(k,2) - ztmp;
           if (boxSideLengths)
             for (int d = 0; d != 3; ++d)
-              delr_ik[d] -= (delr_ik[d]/fabs(delr_ik[d]))*boxSideLengths[d];
+              if (abs(delr_ik[d]) > 0.5 * boxSideLengths[d])
+                delr_ik[d] -= (delr_ik[d]/abs(delr_ik[d]))*boxSideLengths[d];
         }
         const double rsq_ik = delr_ik[0]*delr_ik[0]
                             + delr_ik[1]*delr_ik[1]
@@ -410,7 +412,8 @@ void PairTersoff::compute(KIM_API_model& kim_model,
             delr_ik[2] = atom_coords(k,2) - ztmp;
             if (boxSideLengths)
               for (int d = 0; d != 3; ++d)
-                delr_ik[d] -= (delr_ik[d]/fabs(delr_ik[d]))*boxSideLengths[d];
+                if (abs(delr_ik[d]) > 0.5 * boxSideLengths[d])
+                  delr_ik[d] -= (delr_ik[d]/abs(delr_ik[d]))*boxSideLengths[d];
           }
           const double rsq_ik = delr_ik[0]*delr_ik[0]
             + delr_ik[1]*delr_ik[1]
