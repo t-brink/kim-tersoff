@@ -118,3 +118,18 @@ MODEL_PARAMETERS:
 #PARAM_FREE_h        double    none      [numberParticleTypes,numberParticleTypes]
 #PARAM_FREE_Rc       double    length    [numberParticleTypes,numberParticleTypes]
 #PARAM_FREE_Dc       double    length    [numberParticleTypes,numberParticleTypes]
+
+# Maximum cutoff = Rc + Dc.
+#PARAM_FIXED_cut     double    length    [numberParticleTypes,numberParticleTypes]
+# Square of maximum cutoff.
+#PARAM_FIXED_cutsq   double    length^2  [numberParticleTypes,numberParticleTypes]
+# Value of cutoff function is 1.0 below this value, i.e. Rc - Dc.
+#PARAM_FIXED_cutmin  double    length    [numberParticleTypes,numberParticleTypes]
+# These are used to check if certain numerical approximations may be used.
+#PARAM_FIXED_n_precomp double  none      [numberParticleTypes,numberParticleTypes,4]
+# c^2
+#PARAM_FIXED_c2      double    none      [numberParticleTypes,numberParticleTypes]
+# d^2
+#PARAM_FIXED_d2      double    none      [numberParticleTypes,numberParticleTypes]
+# c^2 / d^2
+#PARAM_FIXED_c2_d2   double    none      [numberParticleTypes,numberParticleTypes]

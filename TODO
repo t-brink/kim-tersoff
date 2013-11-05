@@ -1,15 +1,23 @@
-* use assert() macro to check bounds etc and disable for release builds
-
 * publish parameters
-** parameters can be arrays, so do a 2D array like internally
-*** Store in the Tersoff class the Array2Ds for every published
-    parameter, managing their own memory
-*** on init, read into published parameter memory (published by
-    setm_data()) and call a prepare_params method (see last sub-point)
-*** on reinit, call a prepare_params method (see last sub-point)
-*** prepare_params method: transfer published parameters into internal
-    storage, compute derived parameters, publish maximum cutoff
-    [public method]
+** problem for now is that PairTersoff stores parameters as an n*n
+   array of struct
+** KIM uses an n*n array for every parameter
+** Therefore store all the array pointers in a struct.
+** This means the following modifications need to be done:
+*** model_driver_init: get free and fixed parameters and store the
+   pointers in PairTersoff, register "reinit" function
+*** reinit: re-compute derived paramenters (fixed parameters), like
+   for example the cutoff, c²/d² etc. Do this by calling
+   PairTersoff::prepare_params.
+*** PairTersoff::PairTersoff: get pointers from model_driver_init and
+   store them, call prepare_params
+*** PairTersoff::read_params: handle new storage layout for
+   parameters
+*** PairTersoff::prepare_params: handle new storage layout for
+   parameters
+*** PairTersoff::compute: handle new storage layout for
+   parameters
+** Benchmark if that impacts the performance.
 
 * investigate if there is a way to support half neighbor lists without
    getting terrible performance
@@ -19,6 +27,6 @@
 
 * test suite
 
-* README
-
 * comment code better
+
+* use assert() macro to check bounds etc and disable for release builds
