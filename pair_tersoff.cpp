@@ -64,12 +64,13 @@ PairTersoff::~PairTersoff()
 /* ---------------------------------------------------------------------- */
 
 void PairTersoff::compute(KIM_API_model& kim_model,
-                          bool use_neighbor_list, // false -> cluster
+                          bool use_neighbor_list, // false -> cluster/MI_OPBC
                           bool use_distvec, // use rij array from neighbor list?
                           KIM_IterLoca access_mode,
                           int n_atoms, // Actual number of atoms
                           const int* atom_types,
                           const Array2D<double>& atom_coords,
+                          double* boxSideLengths, // If != NULL -> MI_OPBC.
                           double* energy, double* atom_energy,
                           Array2D<double>* forces,
                           double* virial,
@@ -185,6 +186,9 @@ void PairTersoff::compute(KIM_API_model& kim_model,
         delr_ij[0] = atom_coords(j,0) - xtmp;
         delr_ij[1] = atom_coords(j,1) - ytmp;
         delr_ij[2] = atom_coords(j,2) - ztmp;
+        if (boxSideLengths)
+          for (int d = 0; d != 3; ++d)
+            delr_ij[d] -= (delr_ij[d]/fabs(delr_ij[d]))*boxSideLengths[d];
       }
       const double rsq_ij = delr_ij[0]*delr_ij[0]
                           + delr_ij[1]*delr_ij[1]
@@ -279,6 +283,9 @@ void PairTersoff::compute(KIM_API_model& kim_model,
           delr_ik[0] = atom_coords(k,0) - xtmp;
           delr_ik[1] = atom_coords(k,1) - ytmp;
           delr_ik[2] = atom_coords(k,2) - ztmp;
+          if (boxSideLengths)
+            for (int d = 0; d != 3; ++d)
+              delr_ik[d] -= (delr_ik[d]/fabs(delr_ik[d]))*boxSideLengths[d];
         }
         const double rsq_ik = delr_ik[0]*delr_ik[0]
                             + delr_ik[1]*delr_ik[1]
@@ -401,6 +408,9 @@ void PairTersoff::compute(KIM_API_model& kim_model,
             delr_ik[0] = atom_coords(k,0) - xtmp;
             delr_ik[1] = atom_coords(k,1) - ytmp;
             delr_ik[2] = atom_coords(k,2) - ztmp;
+            if (boxSideLengths)
+              for (int d = 0; d != 3; ++d)
+                delr_ik[d] -= (delr_ik[d]/fabs(delr_ik[d]))*boxSideLengths[d];
           }
           const double rsq_ik = delr_ik[0]*delr_ik[0]
             + delr_ik[1]*delr_ik[1]

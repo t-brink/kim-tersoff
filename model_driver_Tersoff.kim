@@ -63,7 +63,7 @@ Neigh_IterAccess            flag
 Neigh_LocaAccess            flag
 NEIGH_RVEC_F                flag
 NEIGH_PURE_F                flag
-#MI_OPBC_F                   flag
+MI_OPBC_F                   flag
 CLUSTER                     flag
 
 # Cannot support half lists due to functional form which would then
@@ -81,8 +81,9 @@ particleTypes        integer   none      [numberOfParticles]
 coordinates          double    length    [numberOfParticles,3]
 get_neigh            method    none      []                    optional
 neighObject          pointer   none      []                    optional
+boxSideLengths       double    length    [3]                   optional
 # This one is unused in the model.
-numberContributingParticles integer none [] optional
+numberContributingParticles integer none []                    optional
 
 ## Output spec #########################################################
 MODEL_OUTPUT:

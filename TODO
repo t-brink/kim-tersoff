@@ -1,7 +1,5 @@
 * use assert() macro to check bounds etc and disable for release builds
 
-* can the output of getm_compute() be assumed to be constant or not?
-
 * publish parameters
 ** parameters can be arrays, so do a 2D array like internally
 *** Store in the Tersoff class the Array2Ds for every published
@@ -13,7 +11,8 @@
     storage, compute derived parameters, publish maximum cutoff
     [public method]
 
-* MI_OPBC_F
+* investigate if there is a way to support half neighbor lists without
+   getting terrible performance
 
 * optimize
 ** parts of force calculation are still done even if not needed

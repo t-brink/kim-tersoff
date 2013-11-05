@@ -55,6 +55,8 @@ const double pi_4 = 0.78539816339744830962;  /* pi/4 */
     int numberOfParticles;
     int particleTypes;
     int coordinates;
+    // Optional inputs.
+    int boxSideLengths;
     // Optional outputs.
     int energy;
     //int compute_energy; // was energy requested?
@@ -87,7 +89,7 @@ class PairTersoff /*: public Pair*/ {
   virtual ~PairTersoff();
   void compute(KIM_API_model&, bool, bool, KIM_IterLoca,
                int, const int*, const Array2D<double>&,
-               double*, double*, Array2D<double>*,
+               double*, double*, double*, Array2D<double>*,
                double*, Array2D<double>*) const;
   void prepare_params();
   double cutoff() const {

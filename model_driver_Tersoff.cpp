@@ -131,10 +131,13 @@ static int compute(KIM_API_model** kimmdl) {
   double* f;
   double* virial;
   double* particleVirial_;
-  kim_model.getm_data_by_index(&error, 8*3,
+  double* boxSideLengths;
+  kim_model.getm_data_by_index(&error, 9*3,
                                ki.numberOfParticles, &n_atoms, 1,
                                ki.particleTypes, &atom_types, 1,
                                ki.coordinates, &c, 1,
+                               ki.boxSideLengths, &boxSideLengths,
+                                                  (ki.nbc == KIM_MI_OPBC_F),
                                ki.energy, &energy, compute_energy,
                                ki.particleEnergy, &particle_energy,
                                                   compute_particleEnergy,
@@ -151,6 +154,8 @@ static int compute(KIM_API_model** kimmdl) {
   Array2D<double> coord(c, *n_atoms, 3);
   if (!compute_energy)
     energy = NULL;
+  if (ki.nbc != KIM_MI_OPBC_F)
+    boxSideLengths = NULL;
   if (!compute_particleEnergy)
     particle_energy = NULL;
   Array2D<double> forces(f, *n_atoms, 3);
@@ -166,6 +171,7 @@ static int compute(KIM_API_model** kimmdl) {
     bool use_neighbor_list, use_distvec;
     switch (ki.nbc) {
     case KIM_CLUSTER:
+    case KIM_MI_OPBC_F:
       use_neighbor_list = false;
       use_distvec = false;
       break;
@@ -185,7 +191,7 @@ static int compute(KIM_API_model** kimmdl) {
     }
     tersoff->compute(kim_model, use_neighbor_list, use_distvec,
                      ki.neigh_access_mode,
-                     *n_atoms, atom_types, coord,
+                     *n_atoms, atom_types, coord, boxSideLengths,
                      energy, particle_energy, forces_ptr,
                      virial, particleVirial_ptr);
   } catch (const exception& e) {
@@ -296,10 +302,11 @@ int model_driver_init(void* km, // The KIM model object
 
   // Get KIM indices for efficiency.
   KimIndices kim_indices;
-  kim_model.getm_index(&error, 8*3,
+  kim_model.getm_index(&error, 9*3,
                        "numberOfParticles", &kim_indices.numberOfParticles, 1,
                        "particleTypes", &kim_indices.particleTypes, 1,
                        "coordinates", &kim_indices.coordinates, 1,
+                       "boxSideLengths", &kim_indices.boxSideLengths, 1,
                        "energy", &kim_indices.energy, 1,
                        "particleEnergy", &kim_indices.particleEnergy, 1,
                        "forces", &kim_indices.forces, 1,
@@ -326,6 +333,8 @@ int model_driver_init(void* km, // The KIM model object
     kim_indices.nbc = KIM_NEIGH_RVEC_F;
   else if (nbc == "NEIGH_PURE_F")
     kim_indices.nbc = KIM_NEIGH_PURE_F;
+  else if (nbc == "MI_OPBC_F")
+    kim_indices.nbc = KIM_MI_OPBC_F;
   else if (nbc == "CLUSTER")
     kim_indices.nbc = KIM_CLUSTER;
   else {
