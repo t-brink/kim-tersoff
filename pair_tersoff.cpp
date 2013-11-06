@@ -40,7 +40,7 @@ PairTersoff::PairTersoff(string parameter_file,
                          // KIM indices.
                          const KimIndices& ki
                          )
-  : kim_indices(ki), n_spec(n_spec), params(n_spec, n_spec, n_spec)
+  : kim_indices(ki), n_spec(n_spec), params(n_spec)
 {
   // Prepare index -> element name mapping.
   for (map<string,int>::const_iterator i = type_map.begin();
@@ -195,20 +195,20 @@ void PairTersoff::compute(KIM_API_model& kim_model,
                           + delr_ij[1]*delr_ij[1]
                           + delr_ij[2]*delr_ij[2];
 
-      const double cutsq = params(itype,jtype,jtype).cutsq;
+      const double cutsq = params.cutsq(itype,jtype,jtype);
       if (rsq_ij > cutsq) continue;
 
       const double r_ij = sqrt(rsq_ij);
 
-      const double R = params(itype,jtype,jtype).R;
-      const double D = params(itype,jtype,jtype).D;
+      const double R = params.R(itype,jtype,jtype);
+      const double D = params.D(itype,jtype,jtype);
       const double fc_ij = ters_fc(r_ij, R, D); // Value of the cutoff function.
       const double dfc_ij = ters_fc_d(r_ij, R, D); // Derivative of fc_ij.
 
       // two-body interactions
 
-      const double lam1 = params(itype,jtype,jtype).lam1;
-      const double A = params(itype,jtype,jtype).A;
+      const double lam1 = params.lam1(itype,jtype,jtype);
+      const double A = params.A(itype,jtype,jtype);
 
       double evdwl; // Particle energy.
       const double fpair =
@@ -292,20 +292,20 @@ void PairTersoff::compute(KIM_API_model& kim_model,
         const double rsq_ik = delr_ik[0]*delr_ik[0]
                             + delr_ik[1]*delr_ik[1]
                             + delr_ik[2]*delr_ik[2];
-        const double cutsq = params(itype,jtype,ktype).cutsq;
+        const double cutsq = params.cutsq(itype,jtype,ktype);
         if (rsq_ik > cutsq) continue;
 
         const double r_ik = sqrt(rsq_ik);
 
-        const int m = params(itype,jtype,ktype).m;
-        const double lam3 = params(itype,jtype,ktype).lam3;
-        const double R = params(itype,jtype,ktype).R;
-        const double D = params(itype,jtype,ktype).D;
-        const double gamma = params(itype,jtype,ktype).gamma;
-        const double c2 = params(itype,jtype,ktype).c2;
-        const double d2 = params(itype,jtype,ktype).d2;
-        const double c2_d2 = params(itype,jtype,ktype).c2_d2;
-        const double h = params(itype,jtype,ktype).h;
+        const int m = params.m(itype,jtype,ktype);
+        const double lam3 = params.lam3(itype,jtype,ktype);
+        const double R = params.R(itype,jtype,ktype);
+        const double D = params.D(itype,jtype,ktype);
+        const double gamma = params.gamma(itype,jtype,ktype);
+        const double c2 = params.c2(itype,jtype,ktype);
+        const double d2 = params.d2(itype,jtype,ktype);
+        const double c2_d2 = params.c2_d2(itype,jtype,ktype);
+        const double h = params.h(itype,jtype,ktype);
 
         zeta_ij += zeta(r_ij,r_ik,m,lam3,R,D,gamma,c2,d2,c2_d2,h,
                         delr_ij,delr_ik);
@@ -313,11 +313,11 @@ void PairTersoff::compute(KIM_API_model& kim_model,
 
       // pairwise force due to zeta
 
-      const double B = params(itype,jtype,jtype).B;
-      const double lam2 = params(itype,jtype,jtype).lam2;
-      const double beta = params(itype,jtype,jtype).beta;
-      const double n = params(itype,jtype,jtype).n;
-      const double* n_precomp = params(itype,jtype,jtype).n_precomp;
+      const double B = params.B(itype,jtype,jtype);
+      const double lam2 = params.lam2(itype,jtype,jtype);
+      const double beta = params.beta(itype,jtype,jtype);
+      const double n = params.n(itype,jtype,jtype);
+      const double* n_precomp = &params.n_precomp(itype,jtype,jtype,0);
 
       double prefactor; // -0.5 * fa * ∇bij
       const double fzeta =
@@ -418,20 +418,20 @@ void PairTersoff::compute(KIM_API_model& kim_model,
           const double rsq_ik = delr_ik[0]*delr_ik[0]
             + delr_ik[1]*delr_ik[1]
             + delr_ik[2]*delr_ik[2];
-          const double cutsq = params(itype,jtype,ktype).cutsq;
+          const double cutsq = params.cutsq(itype,jtype,ktype);
           if (rsq_ik > cutsq) continue;
 
           const double r_ik = sqrt(rsq_ik);
 
-          const double R = params(itype,jtype,ktype).R;
-          const double D = params(itype,jtype,ktype).D;
-          const int m = params(itype,jtype,ktype).m;
-          const double lam3 = params(itype,jtype,ktype).lam3;
-          const double gamma = params(itype,jtype,ktype).gamma;
-          const double c2 = params(itype,jtype,ktype).c2;
-          const double d2 = params(itype,jtype,ktype).d2;
-          const double c2_d2 = params(itype,jtype,ktype).c2_d2;
-          const double h = params(itype,jtype,ktype).h;
+          const double R = params.R(itype,jtype,ktype);
+          const double D = params.D(itype,jtype,ktype);
+          const int m = params.m(itype,jtype,ktype);
+          const double lam3 = params.lam3(itype,jtype,ktype);
+          const double gamma = params.gamma(itype,jtype,ktype);
+          const double c2 = params.c2(itype,jtype,ktype);
+          const double d2 = params.d2(itype,jtype,ktype);
+          const double c2_d2 = params.c2_d2(itype,jtype,ktype);
+          const double h = params.h(itype,jtype,ktype);
 
           double fi[3], fj[3], fk[3];
 
@@ -524,40 +524,41 @@ void PairTersoff::read_params(istream& infile, std::map<string,int> type_map,
   // Read in parameters.
   Array3D<bool> got_interaction(n_spec,n_spec,n_spec);
   got_interaction = false;
-  Params temp_params;
-  double m; // m is an integer but some input files use floating point
-            // notation, so we need to read into a double variable,
-            // otherwise the C++ standard library chokes on the input.
+  double m, gamma, lam3, c, d, h, n, beta, lam2, B, R, D, lam1, A;
+  double m_int; // m is an integer but some input files use floating
+                // point notation, so we need to read into a double
+                // variable, otherwise the C++ standard library chokes
+                // on the input.  Then we convert to integer (m_int).
   string type_i, type_j, type_k;
   while (buffer >> type_i
                 >> type_j
                 >> type_k
                 >> m
-                >> temp_params.gamma
-                >> temp_params.lam3
-                >> temp_params.c
-                >> temp_params.d
-                >> temp_params.h // costheta0
-                >> temp_params.n
-                >> temp_params.beta
-                >> temp_params.lam2
-                >> temp_params.B
-                >> temp_params.R
-                >> temp_params.D
-                >> temp_params.lam1
-                >> temp_params.A) {
+                >> gamma
+                >> lam3
+                >> c
+                >> d
+                >> h // costheta0
+                >> n
+                >> beta
+                >> lam2
+                >> B
+                >> R
+                >> D
+                >> lam1
+                >> A) {
     // Convert m to integer.
-    temp_params.m = m;
-    if (abs(m - temp_params.m) > 1e-8)
+    m_int = m;
+    if (abs(m - m_int) > 1e-8)
       throw runtime_error("m must be an integer");
     // Unit conversion.
-    temp_params.A *= energy_conv;
-    temp_params.B *= energy_conv;
-    temp_params.lam1 *= inv_length_conv;
-    temp_params.lam2 *= inv_length_conv;
-    temp_params.lam3 *= inv_length_conv;
-    temp_params.R *= length_conv;
-    temp_params.D *= length_conv;
+    A *= energy_conv;
+    B *= energy_conv;
+    lam1 *= inv_length_conv;
+    lam2 *= inv_length_conv;
+    lam3 *= inv_length_conv;
+    R *= length_conv;
+    D *= length_conv;
     // Get the atom type indices.
     std::map<std::string,int>::const_iterator it;
     int i,j,k;
@@ -584,7 +585,20 @@ void PairTersoff::read_params(istream& infile, std::map<string,int> type_map,
                           " is defined twice!");
     // All OK, store.
     got_interaction(i,j,k) = true;
-    params(i,j,k) = temp_params;
+    params.m(i,j,k) = m;
+    params.gamma(i,j,k) = gamma;
+    params.lam3(i,j,k) = lam3;
+    params.c(i,j,k) = c;
+    params.d(i,j,k) = d;
+    params.h(i,j,k) = h;
+    params.n(i,j,k) = n;
+    params.beta(i,j,k) = beta;
+    params.lam2(i,j,k) = lam2;
+    params.B(i,j,k) = B;
+    params.R(i,j,k) = R;
+    params.D(i,j,k) = D;
+    params.lam1(i,j,k) = lam1;
+    params.A(i,j,k) = A;
   }
   if (!got_interaction.all())
     throw runtime_error("Not all interactions were set!");
@@ -601,106 +615,107 @@ void PairTersoff::prepare_params() {
       string type_j = to_spec.at(j);
       for (int k = 0; k != n_spec; ++k) {
         string type_k = to_spec.at(k);
-        Params& temp_params = params(i,j,k);
         // Check values of parameters.
-        if (temp_params.c < 0)
+        if (params.c(i,j,k) < 0)
           throw runtime_error("Parameter c ("
                               + type_i +
                               "-" + type_j +
                               "-" + type_k +
                               ") may not be smaller than zero.");
-        if (temp_params.d < 0)
+        if (params.d(i,j,k) < 0)
           throw runtime_error("Parameter d ("
                               + type_i +
                               "-" + type_j +
                               "-" + type_k +
                               ") may not be smaller than zero.");
-        if (temp_params.n < 0)
+        if (params.n(i,j,k) < 0)
           throw runtime_error("Parameter n ("
                               + type_i +
                               "-" + type_j +
                               "-" + type_k +
                               ") may not be smaller than zero.");
-        if (temp_params.beta < 0)
+        if (params.beta(i,j,k) < 0)
           throw runtime_error("Parameter beta ("
                               + type_i +
                               "-" + type_j +
                               "-" + type_k +
                               ") may not be smaller than zero.");
-        if (temp_params.lam1 < 0)
+        if (params.lam1(i,j,k) < 0)
           throw runtime_error("Parameter lambda1 ("
                               + type_i +
                               "-" + type_j +
                               "-" + type_k +
                               ") may not be smaller than zero.");
-        if (temp_params.lam2 < 0)
+        if (params.lam2(i,j,k) < 0)
           throw runtime_error("Parameter lambda2 ("
                               + type_i +
                               "-" + type_j +
                               "-" + type_k +
                               ") may not be smaller than zero.");
-        if (temp_params.A < 0)
+        if (params.A(i,j,k) < 0)
           throw runtime_error("Parameter A ("
                               + type_i +
                               "-" + type_j +
                               "-" + type_k +
                               ") may not be smaller than zero.");
-        if (temp_params.B < 0)
+        if (params.B(i,j,k) < 0)
           throw runtime_error("Parameter B ("
                               + type_i +
                               "-" + type_j +
                               "-" + type_k +
                               ") may not be smaller than zero.");
-        if (temp_params.m != 1 && temp_params.m != 3)
+        if (params.m(i,j,k) != 1 && params.m(i,j,k) != 3)
           throw runtime_error("Parameter m ("
                               + type_i +
                               "-" + type_j +
                               "-" + type_k +
                               ") must be one or three.");
-        if (temp_params.R < 0)
+        if (params.R(i,j,k) < 0)
           throw runtime_error("Parameter R ("
                               + type_i +
                               "-" + type_j +
                               "-" + type_k +
                               ") may not be smaller than zero.");
-        if (temp_params.D < 0)
+        if (params.D(i,j,k) < 0)
           throw runtime_error("Parameter D ("
                               + type_i +
                               "-" + type_j +
                               "-" + type_k +
                               ") may not be smaller than zero.");
-        if (temp_params.D > temp_params.R)
+        if (params.D(i,j,k) > params.R(i,j,k))
           throw runtime_error("Parameter D ("
                               + type_i +
                               "-" + type_j +
                               "-" + type_k +
                               ") must be smaller than R.");
-        if (temp_params.gamma < 0)
+        if (params.gamma(i,j,k) < 0)
           throw runtime_error("Parameter gamma ("
                               + type_i +
                               "-" + type_j +
                               "-" + type_k +
                               ") may not be smaller than zero.");
         // Cutoff.
-        temp_params.cut =
-          temp_params.R + temp_params.D; // max cutoff.
-        temp_params.cutmin =
-          temp_params.R - temp_params.D; // below this the cutoff value is 1.0
-        temp_params.cutsq =
-          temp_params.cut * temp_params.cut; // for fast check if inside cutoff
+        params.cut(i,j,k) =
+          params.R(i,j,k) + params.D(i,j,k); // max cutoff.
+        params.cutmin(i,j,k) =
+          params.R(i,j,k) - params.D(i,j,k); // below this the cutoff
+                                             // value is 1.0
+        params.cutsq(i,j,k) =
+          params.cut(i,j,k) * params.cut(i,j,k); // for fast check if
+                                                 // inside cutoff
         // Get the cutoff to pass to KIM, which is the biggest cutoff.
-        if (temp_params.cut > max_cutoff)
-          max_cutoff = temp_params.cut;
+        if (params.cut(i,j,k) > max_cutoff)
+          max_cutoff = params.cut(i,j,k);
         // Pre-compute values.
-        const double n2 = 2.0 * temp_params.n;
-        const double n_r = -1.0/temp_params.n;
-        temp_params.n_precomp[0] = pow(n2 * 1e-16, n_r);
-        temp_params.n_precomp[1] = pow(n2 * 1e-8, n_r);
-        temp_params.n_precomp[2] = 1.0 / temp_params.n_precomp[1];
-        temp_params.n_precomp[3] = 1.0 / temp_params.n_precomp[0];
-        temp_params.c2 = temp_params.c * temp_params.c;
-        temp_params.d2 = temp_params.d * temp_params.d;
-        temp_params.c2_d2 = temp_params.c2 / temp_params.d2;
+        const double n2 = 2.0 * params.n(i,j,k);
+        const double n_r = -1.0/params.n(i,j,k);
+        params.n_precomp(i,j,k,0) = pow(n2 * 1e-16, n_r);
+        params.n_precomp(i,j,k,1) = pow(n2 * 1e-8, n_r);
+        params.n_precomp(i,j,k,2) = 1.0 / params.n_precomp(i,j,k,1);
+        params.n_precomp(i,j,k,3) = 1.0 / params.n_precomp(i,j,k,0);
+        params.c2(i,j,k) = params.c(i,j,k) * params.c(i,j,k);
+        params.d2(i,j,k) = params.d(i,j,k) * params.d(i,j,k);
+        params.c2_d2(i,j,k) = params.c2(i,j,k) / params.d2(i,j,k);
       }
     }
   }

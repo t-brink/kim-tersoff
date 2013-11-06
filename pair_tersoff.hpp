@@ -99,24 +99,37 @@ class PairTersoff /*: public Pair*/ {
 
  private:
   struct Params {
-    double A, B;
-    double lam1, lam2, lam3;
-    double c, d, h;
-    double gamma;
-    int m;
-    double n, beta;
+    explicit Params(int N) // Number of particle types
+      : A(N,N,N), B(N,N,N),
+        lam1(N,N,N), lam2(N,N,N), lam3(N,N,N),
+        c(N,N,N), d(N,N,N), h(N,N,N),
+        gamma(N,N,N),
+        m(N,N,N),
+        n(N,N,N), beta(N,N,N),
+        D(N,N,N), R(N,N,N),
+        cut(N,N,N), cutmin(N,N,N), cutsq(N,N,N),
+        n_precomp(N,N,N,4),
+        c2(N,N,N),
+        d2(N,N,N),
+        c2_d2(N,N,N) {}
+    Array3D<double> A, B;
+    Array3D<double> lam1, lam2, lam3;
+    Array3D<double> c, d, h;
+    Array3D<double> gamma;
+    Array3D<int> m;
+    Array3D<double> n, beta;
     // Cutoff related.
-    double D, R;
-    double cut, cutmin, cutsq;
+    Array3D<double> D, R;
     // Pre-computed.
-    double n_precomp[4];
-    double c2;    // c^2
-    double d2;    // d^2
-    double c2_d2; // c^2 / d^2
+    Array3D<double> cut, cutmin, cutsq;
+    Array4D<double> n_precomp;
+    Array3D<double> c2;    // c^2
+    Array3D<double> d2;    // d^2
+    Array3D<double> c2_d2; // c^2 / d^2
   };
 
   int n_spec;                   // number of species
-  Array3D<Params> params;       // n_spec*n_spec*n_spec array of parameters
+  Params params;                // n_spec*n_spec*n_spec arrays of parameters
   double max_cutoff;            // max cutoff for all elements
   std::map<int,std::string> to_spec;  // map element index to element
                                       // name, needed for user-

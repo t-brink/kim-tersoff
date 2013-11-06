@@ -433,6 +433,100 @@ namespace model_driver_Tersoff {
   };
 
 
+  /*!
+    This wraps a pointer to type T to be used as a 2D array.
+
+    @todo: move inline member functions out of the class definition like above.
+  */
+  template<typename T>
+  class Array4D {
+  public:
+    explicit Array4D(T* data,
+                     int extent0, int extent1, int extent2, int extent3)
+      : data(data),
+        extent0(extent0), extent1(extent1), extent2(extent2), extent3(extent3),
+        fac_i(extent1*extent2*extent3),
+        fac_j(extent2*extent3),
+        keep_data(true)
+    {}
+
+    explicit Array4D(int extent0, int extent1, int extent2, int extent3)
+      : data(static_cast<T*>(malloc(extent0*extent1*extent2*extent3*sizeof(T)))),
+        extent0(extent0), extent1(extent1), extent2(extent2), extent3(extent3),
+        fac_i(extent1*extent2*extent3),
+        fac_j(extent2*extent3),
+        keep_data(false)
+    {}
+
+    ~Array4D() {
+      if (!keep_data)
+        std::free(data);
+    }
+
+    //! Return size of array in dimension e (0 is the first dimension).
+    int extent(int e) const {
+      switch(e) {
+      case 0:
+        return extent0;
+      case 1:
+        return extent1;
+      case 2:
+        return extent2;
+      case 3:
+        return extent3;
+      default:
+        throw std::out_of_range("e must be in the range [0;3]");
+      }
+    }
+
+    T& operator()(int i, int j, int k, int l) {
+      //TODO: range check??
+      return data[i*fac_i + j*fac_j + k*extent3 + l];
+    }
+    const T& operator()(int i, int j, int k, int l) const {
+      //TODO: range check??
+      return data[i*fac_i + j*fac_j + k*extent3 + l];
+    }
+
+    void operator=(const T& rhs) {
+      for (int i = 0; i != extent0; ++i)
+        for (int j = 0; j != extent1; ++j)
+          for (int k = 0; k != extent2; ++k)
+            for (int l = 0; l != extent3; ++l)
+              (*this)(i,j,k,l) = rhs;
+    }
+
+    bool any() const {
+      for (int i = 0; i != extent0; ++i)
+        for (int j = 0; j != extent1; ++j)
+          for (int k = 0; k != extent2; ++k)
+            for (int l = 0; l != extent3; ++l)
+              if ((*this)(i,j,k,l))
+                return true;
+      return false;
+    }
+
+    bool all() const {
+      for (int i = 0; i != extent0; ++i)
+        for (int j = 0; j != extent1; ++j)
+          for (int k = 0; k != extent2; ++k)
+            for (int l = 0; l != extent3; ++l)
+              if (!(*this)(i,j,k,l))
+                return false;
+      return true;
+    }
+
+  private:
+    T* data;
+    int extent0, extent1, extent2, extent3;
+    int fac_i, fac_j;
+    bool keep_data;
+
+    // Do not use!
+    Array4D& operator=(const Array4D&) {}
+  };
+
+
 }
 
 #endif /* TERSOFF_NDARRAY_HPP */
