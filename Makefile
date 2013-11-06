@@ -22,7 +22,7 @@
 
 include ../Makefile.KIM_Config
 
-MODEL_DRIVER_NAME := model_driver_Tersoff
+MODEL_DRIVER_NAME := Tersoff_LAMMPS__MD_077075034781_000
 MODEL_DRIVER_INIT_FUNCTION_NAME := model_driver_init
 MODEL_DRIVER_INIT_FUNCTION_LANG := C
 
