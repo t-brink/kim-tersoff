@@ -525,11 +525,14 @@ void PairTersoff::read_params(istream& infile, std::map<string,int> type_map,
   Array3D<bool> got_interaction(n_spec,n_spec,n_spec);
   got_interaction = false;
   Params temp_params;
+  double m; // m is an integer but some input files use floating point
+            // notation, so we need to read into a double variable,
+            // otherwise the C++ standard library chokes on the input.
   string type_i, type_j, type_k;
   while (buffer >> type_i
                 >> type_j
                 >> type_k
-                >> temp_params.m
+                >> m
                 >> temp_params.gamma
                 >> temp_params.lam3
                 >> temp_params.c
@@ -543,6 +546,10 @@ void PairTersoff::read_params(istream& infile, std::map<string,int> type_map,
                 >> temp_params.D
                 >> temp_params.lam1
                 >> temp_params.A) {
+    // Convert m to integer.
+    temp_params.m = m;
+    if (abs(m - temp_params.m) > 1e-8)
+      throw runtime_error("m must be an integer");
     // Unit conversion.
     temp_params.A *= energy_conv;
     temp_params.B *= energy_conv;
