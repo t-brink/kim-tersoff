@@ -75,29 +75,6 @@ const double pi_4 = 0.78539816339744830962;  /* pi/4 */
 
 class PairTersoff /*: public Pair*/ {
  public:
-  const KimIndices kim_indices;
-  PairTersoff(std::string parameter_file,
-              int n_spec,
-              std::map<std::string,int> type_map,
-              // Conversion factors.
-              double energy_conv,
-              double length_conv,
-              double inv_length_conv,
-              // KIM indices.
-              const KimIndices& ki
-              );
-  virtual ~PairTersoff();
-  void compute(KIM_API_model&, bool, bool, KIM_IterLoca,
-               int, const int*, const Array2D<double>&,
-               double*, double*, double*, Array2D<double>*,
-               double*, Array2D<double>*) const;
-  void prepare_params();
-  double cutoff() const {
-    return max_cutoff;
-  }
-
-
- private:
   // Parameters are stored together in a struct because I found that
   // using the layout that conforms to KIM (one array per parameter)
   // can lead to a slowdown of up to 5% because the data is not in
@@ -180,10 +157,32 @@ class PairTersoff /*: public Pair*/ {
     Array3D<double> D, R;
   };
 
+  PairTersoff(std::string parameter_file,
+              int n_spec,
+              std::map<std::string,int> type_map,
+              // Conversion factors.
+              double energy_conv,
+              double length_conv,
+              double inv_length_conv,
+              // KIM indices.
+              const KimIndices& ki
+              );
+  virtual ~PairTersoff();
+  void compute(KIM_API_model&, bool, bool, KIM_IterLoca,
+               int, const int*, const Array2D<double>&,
+               double*, double*, double*, Array2D<double>*,
+               double*, Array2D<double>*) const;
+  void update_params(); // Copy from KIM-published parameters to internal.
+  double cutoff() const {
+    return max_cutoff;
+  }
+  const KimIndices kim_indices;
+  KIMParams kim_params; // Parameters published to KIM, see above why
+                        // we keep two copies.
+
+ private:
   int n_spec;                   // number of species
   Array3D<Params> params;       // n_spec*n_spec*n_spec array of parameters
-  KIMParams kim_params;         // Parameters published to KIM, see above
-                                // why we keep two copies.
   double max_cutoff;            // max cutoff for all elements
   std::map<int,std::string> to_spec;  // map element index to element
                                       // name, needed for user-
@@ -191,6 +190,7 @@ class PairTersoff /*: public Pair*/ {
 
   void read_params(std::istream&, std::map<std::string,int>,
                    double, double, double);
+  void prepare_params();
   double repulsive(double, double, double, double, double,
                    bool, double&) const;
   double zeta(double, double,

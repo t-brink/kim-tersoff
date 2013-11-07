@@ -40,8 +40,8 @@ PairTersoff::PairTersoff(string parameter_file,
                          // KIM indices.
                          const KimIndices& ki
                          )
-  : kim_indices(ki), n_spec(n_spec),
-    params(n_spec, n_spec, n_spec), kim_params(n_spec)
+  : kim_indices(ki), kim_params(n_spec), n_spec(n_spec),
+    params(n_spec, n_spec, n_spec)
 {
   // Prepare index -> element name mapping.
   for (map<string,int>::const_iterator i = type_map.begin();
@@ -593,6 +593,11 @@ void PairTersoff::read_params(istream& infile, std::map<string,int> type_map,
   prepare_params();
   // Copy to KIM-published data.
   kim_params.from_params(params);
+}
+
+void PairTersoff::update_params() {
+  kim_params.to_params(params);
+  prepare_params();
 }
 
 /* Check parameters and pre-compute values. */

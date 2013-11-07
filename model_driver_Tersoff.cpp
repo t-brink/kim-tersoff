@@ -83,13 +83,24 @@ static int reinit(KIM_API_model** kimmdl) {
     return error;
   }
 
-  // Re-compute some pre-calculated values from new parameters.
+  // Copy KIM-published parameters to internal storage format and
+  // re-compute some pre-calculated values from new parameters.
   try {
-    tersoff->prepare_params();
+    tersoff->update_params();
   } catch (const exception& e) {
     kim_model.report_error(__LINE__, __FILE__, e.what(), KIM_STATUS_FAIL);
     return KIM_STATUS_FAIL;
   }
+
+  // Re-publish cutoff.
+  double& cutoff =
+    *static_cast<double*>(kim_model.get_data("cutoff", &error));
+  if (error != KIM_STATUS_OK) {
+    kim_model.report_error(__LINE__, __FILE__, "KIM_API_get_data(\"cutoff\")",
+                           error);
+    return error;
+  }
+  cutoff = tersoff->cutoff();
 
   return KIM_STATUS_OK;
 }
@@ -382,11 +393,26 @@ int model_driver_init(void* km, // The KIM model object
     return KIM_STATUS_FAIL;
   }
 
-  // Pass functions to KIM.
-  kim_model.setm_data(&error, 2*4,
+  // Pass functions and parameters to KIM.
+  kim_model.setm_data(&error, 17*4,
                       "compute", 1, &compute, 1,
-                      //"reinit",  1, &reinit,  1,
-                      "destroy", 1, &destroy, 1);
+                      "reinit",  1, &reinit,  1,
+                      "destroy", 1, &destroy, 1,
+                      "PARAM_FREE_A", 1, &tersoff->kim_params.A(0,0,0), 1,
+                      "PARAM_FREE_B", 1, &tersoff->kim_params.B(0,0,0), 1,
+                      "PARAM_FREE_lambda1", 1, &tersoff->kim_params.lam1(0,0,0), 1,
+                      "PARAM_FREE_lambda2", 1, &tersoff->kim_params.lam2(0,0,0), 1,
+                      "PARAM_FREE_lambda3", 1, &tersoff->kim_params.lam3(0,0,0), 1,
+                      "PARAM_FREE_beta", 1, &tersoff->kim_params.beta(0,0,0), 1,
+                      "PARAM_FREE_n", 1, &tersoff->kim_params.n(0,0,0), 1,
+                      "PARAM_FREE_m", 1, &tersoff->kim_params.m(0,0,0), 1,
+                      "PARAM_FREE_gamma", 1, &tersoff->kim_params.gamma(0,0,0), 1,
+                      "PARAM_FREE_c", 1, &tersoff->kim_params.c(0,0,0), 1,
+                      "PARAM_FREE_d", 1, &tersoff->kim_params.d(0,0,0), 1,
+                      "PARAM_FREE_h", 1, &tersoff->kim_params.h(0,0,0), 1,
+                      "PARAM_FREE_Rc", 1, &tersoff->kim_params.R(0,0,0), 1,
+                      "PARAM_FREE_Dc", 1, &tersoff->kim_params.D(0,0,0), 1
+                      );
   if (error != KIM_STATUS_OK) {
     kim_model.report_error(__LINE__, __FILE__, "KIM_API_setm_data", error);
     delete tersoff;

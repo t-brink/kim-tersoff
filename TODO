@@ -1,24 +1,3 @@
-* publish parameters
-** problem for now is that PairTersoff stores parameters as an n*n
-   array of struct
-** KIM uses an n*n array for every parameter
-** Therefore store all the array pointers in a struct.
-** This means the following modifications need to be done:
-*** model_driver_init: get free and fixed parameters and store the
-   pointers in PairTersoff, register "reinit" function
-*** reinit: re-compute derived paramenters (fixed parameters), like
-   for example the cutoff, c²/d² etc. Do this by calling
-   PairTersoff::prepare_params.
-*** PairTersoff::PairTersoff: get pointers from model_driver_init and
-   store them, call prepare_params
-*** PairTersoff::read_params: handle new storage layout for
-   parameters
-*** PairTersoff::prepare_params: handle new storage layout for
-   parameters
-*** PairTersoff::compute: handle new storage layout for
-   parameters
-** Benchmark if that impacts the performance.
-
 * investigate if there is a way to support half neighbor lists without
    getting terrible performance
 
