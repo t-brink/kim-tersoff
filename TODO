@@ -1,3 +1,5 @@
+* Publish parameters as N*N instead of N*N*N array? Is this possible?
+
 * investigate if there is a way to support half neighbor lists without
    getting terrible performance
 

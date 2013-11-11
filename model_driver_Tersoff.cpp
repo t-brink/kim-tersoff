@@ -182,8 +182,11 @@ static int compute(KIM_API_model** kimmdl) {
     bool use_neighbor_list, use_distvec;
     switch (ki.nbc) {
     case KIM_CLUSTER:
-    case KIM_MI_OPBC_F:
       use_neighbor_list = false;
+      use_distvec = false;
+      break;
+    case KIM_MI_OPBC_F:
+      use_neighbor_list = true;
       use_distvec = false;
       break;
     case KIM_NEIGH_PURE_F:
