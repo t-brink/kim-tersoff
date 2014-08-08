@@ -324,7 +324,7 @@ int model_driver_init(void* km, // The KIM model object
   KimIndices kim_indices;
   kim_model.getm_index(&error, 9*3,
                        "numberOfParticles", &kim_indices.numberOfParticles, 1,
-                       "particleTypes", &kim_indices.particleTypes, 1,
+                       "particleSpecies", &kim_indices.particleTypes, 1,
                        "coordinates", &kim_indices.coordinates, 1,
                        "boxSideLengths", &kim_indices.boxSideLengths, 1,
                        "energy", &kim_indices.energy, 1,
