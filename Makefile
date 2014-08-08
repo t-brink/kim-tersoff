@@ -19,15 +19,17 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-
+ifeq ($(wildcard ../Makefile.KIM_Config),)
+  $(error ../Makefile.KIM_Config does not exist.  Something is wrong with your KIM API package setup)
+endif
 include ../Makefile.KIM_Config
 
 MODEL_DRIVER_NAME := Tersoff_LAMMPS__MD_077075034781_000
+MODEL_DRIVER_KIM_FILE_TEMPLATE := Tersoff_LAMMPS.kim.tpl
 MODEL_DRIVER_INIT_FUNCTION_NAME := model_driver_init
-MODEL_DRIVER_INIT_FUNCTION_LANG := C
 
 LOCALOBJ = pair_tersoff.o model_driver_Tersoff.o
 
 LOCALCLEAN =
 
-include $(KIM_DIR)/MAKE_SYSTEM/Makefile.ModelDriver
+include $(KIM_DIR)/$(builddir)/Makefile.ModelDriver

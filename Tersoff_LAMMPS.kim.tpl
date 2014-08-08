@@ -21,7 +21,7 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-MODEL_NAME := MODEL_NAME_STR
+KIM_API_Version  := 1.6.0
 
 ## Units ###############################################################
 Unit_Handling    := flexible
@@ -36,7 +36,7 @@ Unit_time        := ps
 # uses this driver MUST have continuous numbering for the species,
 # i.e. the model driver expects the righmost column to have all
 # numbers in [0;n_spec).  Failure to do this WILL lead to an error.
-SUPPORTED_ATOM/PARTICLES_TYPES:
+PARTICLE_SPECIES:
 # Symbol/name               Type                    code
 SPECIES_001_NAME_STR        spec                    0
 SPECIES_002_NAME_STR        spec                    1
@@ -76,8 +76,8 @@ MODEL_INPUT:
 
 # variable           type      unit      dimensions            requirements
 numberOfParticles    integer   none      []
-numberParticleTypes  integer   none      []
-particleTypes        integer   none      [numberOfParticles]
+numberOfSpecies      integer   none      []
+particleSpecies      integer   none      [numberOfParticles]
 coordinates          double    length    [numberOfParticles,3]
 get_neigh            method    none      []                    optional
 neighObject          pointer   none      []                    optional

@@ -119,7 +119,7 @@ void PairTersoff::compute(KIM_API_model& kim_model,
                           &neighbors, // not set when resetting
                           &distvec // not set when resetting
                           );
-    if (error != KIM_STATUS_OK && error != KIM_STATUS_NEIGH_ITER_INIT_OK) {
+    if (error < KIM_STATUS_OK && error != KIM_STATUS_NEIGH_ITER_INIT_OK) {
       kim_model.report_error(__LINE__, __FILE__,
                              "KIM_API_get_neigh (reset iterator)",
                              error);
@@ -155,7 +155,7 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       if (access_mode == KIM_ITERATOR_MODE &&
           error == KIM_STATUS_NEIGH_ITER_PAST_END)
         break; // Loop breaking condition is that we used up all central atoms.
-      if (error != KIM_STATUS_OK) {
+      if (error < KIM_STATUS_OK) {
         kim_model.report_error(__LINE__, __FILE__, "KIM_API_get_neigh",
                                error);
         throw runtime_error("compute: Error in KIM_API_get_neigh");

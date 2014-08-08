@@ -60,7 +60,7 @@ static int destroy(KIM_API_model** kimmdl) {
   int error;
   PairTersoff* tersoff =
     static_cast<PairTersoff*>(kim_model.get_model_buffer(&error));
-  if (error != KIM_STATUS_OK) {
+  if (error < KIM_STATUS_OK) {
     kim_model.report_error(__LINE__, __FILE__, "KIM_API_get_model_buffer",
                            error);
     return error;
@@ -77,7 +77,7 @@ static int reinit(KIM_API_model** kimmdl) {
   int error;
   PairTersoff* tersoff =
     static_cast<PairTersoff*>(kim_model.get_model_buffer(&error));
-  if (error != KIM_STATUS_OK) {
+  if (error < KIM_STATUS_OK) {
     kim_model.report_error(__LINE__, __FILE__, "KIM_API_get_model_buffer",
                            error);
     return error;
@@ -95,7 +95,7 @@ static int reinit(KIM_API_model** kimmdl) {
   // Re-publish cutoff.
   double& cutoff =
     *static_cast<double*>(kim_model.get_data("cutoff", &error));
-  if (error != KIM_STATUS_OK) {
+  if (error < KIM_STATUS_OK) {
     kim_model.report_error(__LINE__, __FILE__, "KIM_API_get_data(\"cutoff\")",
                            error);
     return error;
@@ -111,7 +111,7 @@ static int compute(KIM_API_model** kimmdl) {
   int error;
   PairTersoff* tersoff =
     static_cast<PairTersoff*>(kim_model.get_model_buffer(&error));
-  if (error != KIM_STATUS_OK) {
+  if (error < KIM_STATUS_OK) {
     kim_model.report_error(__LINE__, __FILE__, "KIM_API_get_model_buffer",
                            error);
     return error;
@@ -127,7 +127,7 @@ static int compute(KIM_API_model** kimmdl) {
                                   ki.virial, &compute_virial, 1,
                                   ki.particleVirial, &compute_particleVirial, 1
                                   );
-  if (error != KIM_STATUS_OK) {
+  if (error < KIM_STATUS_OK) {
     kim_model.report_error(__LINE__, __FILE__, "KIM_API_getm_compute",
                            error);
     return error;
@@ -157,7 +157,7 @@ static int compute(KIM_API_model** kimmdl) {
                                ki.particleVirial, &particleVirial_,
                                                   compute_particleVirial
                                );
-  if (error != KIM_STATUS_OK) {
+  if (error < KIM_STATUS_OK) {
     kim_model.report_error(__LINE__, __FILE__, "KIM_API_getm_data_by_index",
                            error);
     return error;
@@ -231,13 +231,13 @@ int model_driver_init(void* km, // The KIM model object
   // Get number and names of species.
   map<string,int> spec_idx;
   set<int> indices;
-  int n_spec;
-  char* partcl_types = kim_model.get_model_partcl_typs(&n_spec, &error);
-  if (error != KIM_STATUS_OK) {
-    kim_model.report_error(__LINE__, __FILE__, "KIM_API_get_model_partcl_typs",
+  int n_spec, max_str_len; // max_str_len will be ignored.
+  error = kim_model.get_num_model_species(&n_spec, &max_str_len);
+  if (error < KIM_STATUS_OK) {
+    kim_model.report_error(__LINE__, __FILE__, "KIM_API_get_num_model_species",
                            error);
     return error;
-  } else if (partcl_types == NULL) {
+  } else if (n_spec == 0) {
     kim_model.report_error(__LINE__, __FILE__,
                            "No species names specified, "
                            "but this model driver needs at least one "
@@ -245,18 +245,24 @@ int model_driver_init(void* km, // The KIM model object
     return KIM_STATUS_FAIL;
   }
   for (int i = 0; i != n_spec; ++i) {
-    string spec_name(partcl_types + i*KIM_KEY_STRING_LENGTH);
-    int type_idx =
-      kim_model.get_partcl_type_code(spec_name.c_str(), &error);
-    if (error != KIM_STATUS_OK) {
+    const char* partcl_type;
+    error = kim_model.get_model_species(i, &partcl_type);
+    if (error < KIM_STATUS_OK) {
       kim_model.report_error(__LINE__, __FILE__,
-                             "KIM_API_get_partcl_type_code", error);
+                             "KIM_API_get_model_species", error);
+      return error;
+    }
+    string spec_name(partcl_type);
+    int type_idx =
+      kim_model.get_species_code(spec_name.c_str(), &error);
+    if (error < KIM_STATUS_OK) {
+      kim_model.report_error(__LINE__, __FILE__,
+                             "KIM_API_get_species_code", error);
       return error;
     }
     spec_idx[spec_name] = type_idx;
     indices.insert(type_idx);
   }
-  free(partcl_types);
   // Check if the indices are continuous (as set members are unique,
   // the minimum must be 0, the maximum n_spec-1).  The set is
   // guaranteed to contain at least one entry, as we check for empty
@@ -290,7 +296,7 @@ int model_driver_init(void* km, // The KIM model object
     kim_model.convert_to_act_unit("A", "eV", "e", "K", "ps",
                                   0.0,  1.0, 0.0, 0.0,  0.0,
                                   &error);
-  if (error != KIM_STATUS_OK) {
+  if (error < KIM_STATUS_OK) {
     kim_model.report_error(__LINE__, __FILE__, "KIM_API_convert_to_act_unit",
                            error);
     return error;
@@ -299,7 +305,7 @@ int model_driver_init(void* km, // The KIM model object
     kim_model.convert_to_act_unit("A", "eV", "e", "K", "ps",
                                   1.0,  0.0, 0.0, 0.0,  0.0,
                                   &error);
-  if (error != KIM_STATUS_OK) {
+  if (error < KIM_STATUS_OK) {
     kim_model.report_error(__LINE__, __FILE__, "KIM_API_convert_to_act_unit",
                            error);
     return error;
@@ -308,7 +314,7 @@ int model_driver_init(void* km, // The KIM model object
     kim_model.convert_to_act_unit("A", "eV", "e", "K", "ps",
                                   -1.0, 0.0, 0.0, 0.0,  0.0,
                                   &error);
-  if (error != KIM_STATUS_OK) {
+  if (error < KIM_STATUS_OK) {
     kim_model.report_error(__LINE__, __FILE__, "KIM_API_convert_to_act_unit",
                            error);
     return error;
@@ -327,21 +333,21 @@ int model_driver_init(void* km, // The KIM model object
                        "virial", &kim_indices.virial, 1,
                        "particleVirial", &kim_indices.particleVirial, 1
                        );
-  if (error != KIM_STATUS_OK) {
+  if (error < KIM_STATUS_OK) {
     kim_model.report_error(__LINE__, __FILE__, "KIM_API_getm_index",
                            error);
     return error;
   }
 
   // Get neighbor list style/boundary conditions.
-  char* nbc_str = kim_model.get_NBC_method(&error);
-  if (error != KIM_STATUS_OK) {
+  const char* nbc_str;
+  error = kim_model.get_NBC_method(&nbc_str);
+  if (error < KIM_STATUS_OK) {
     kim_model.report_error(__LINE__, __FILE__, "KIM_API_get_NBC_method",
                            error);
     return error;
   }
   string nbc(nbc_str);
-  free(nbc_str);
 
   if (nbc == "NEIGH_RVEC_F")
     kim_indices.nbc = KIM_NEIGH_RVEC_F;
@@ -361,7 +367,7 @@ int model_driver_init(void* km, // The KIM model object
 
   // Iterator or locator mode?
   int iter_loca = kim_model.get_neigh_mode(&error);
-  if (error != KIM_STATUS_OK) {
+  if (error < KIM_STATUS_OK) {
     kim_model.report_error(__LINE__, __FILE__, "KIM_API_get_neigh_mode",
                            error);
     return error;
@@ -416,7 +422,7 @@ int model_driver_init(void* km, // The KIM model object
                       "PARAM_FREE_Rc", 1, &tersoff->kim_params.R(0,0,0), 1,
                       "PARAM_FREE_Dc", 1, &tersoff->kim_params.D(0,0,0), 1
                       );
-  if (error != KIM_STATUS_OK) {
+  if (error < KIM_STATUS_OK) {
     kim_model.report_error(__LINE__, __FILE__, "KIM_API_setm_data", error);
     delete tersoff;
     return error;
@@ -425,7 +431,7 @@ int model_driver_init(void* km, // The KIM model object
   // Set up cutoff for KIM.
   double& cutoff =
     *static_cast<double*>(kim_model.get_data("cutoff", &error));
-  if (error != KIM_STATUS_OK) {
+  if (error < KIM_STATUS_OK) {
     kim_model.report_error(__LINE__, __FILE__, "KIM_API_get_data(\"cutoff\")",
                            error);
     delete tersoff;
@@ -435,7 +441,7 @@ int model_driver_init(void* km, // The KIM model object
 
   // Store model object.
   kim_model.set_model_buffer(static_cast<void*>(tersoff), &error);
-  if (error != KIM_STATUS_OK) {
+  if (error < KIM_STATUS_OK) {
     kim_model.report_error(__LINE__, __FILE__, "KIM_API_set_model_buffer",
                            error);
     delete tersoff;
