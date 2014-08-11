@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2012,2013 Tobias Brink
+  Copyright (c) 2012,2013,2014 Tobias Brink
 
   Permission is hereby granted, free of charge, to any person obtaining
   a copy of this software and associated documentation files (the

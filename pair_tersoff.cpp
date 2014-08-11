@@ -14,7 +14,7 @@
 /* ----------------------------------------------------------------------
    Contributing author: Aidan Thompson (SNL)
 
-   Modified for use with KIM by Tobias Brink (2012,2013).
+   Modified for use with KIM by Tobias Brink (2012,2013,2014).
 ------------------------------------------------------------------------- */
 
 #include "pair_tersoff.hpp"
