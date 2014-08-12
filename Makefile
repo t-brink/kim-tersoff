@@ -24,7 +24,7 @@ ifeq ($(wildcard ../Makefile.KIM_Config),)
 endif
 include ../Makefile.KIM_Config
 
-MODEL_DRIVER_NAME := Tersoff_LAMMPS__MD_077075034781_001
+MODEL_DRIVER_NAME := Tersoff_LAMMPS__MD_077075034781_002
 MODEL_DRIVER_KIM_FILE_TEMPLATE := Tersoff_LAMMPS.kim.tpl
 MODEL_DRIVER_INIT_FUNCTION_NAME := model_driver_init
 
