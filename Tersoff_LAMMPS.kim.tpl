@@ -1,6 +1,6 @@
 # -*- conf -*-
 #
-# Copyright (c) 2012,2013,2014 Tobias Brink
+# Copyright (c) 2012,2013,2014,2015 Tobias Brink
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -104,17 +104,17 @@ particleVirial       double    energy    [numberOfParticles,6] optional
 MODEL_PARAMETERS:
 
 # variable           type      unit      dimensions
-PARAM_FREE_A         double    energy    [numberParticleTypes,numberParticleTypes,numberParticleTypes]
-PARAM_FREE_B         double    energy    [numberParticleTypes,numberParticleTypes,numberParticleTypes]
-PARAM_FREE_lambda1   double    length^-1 [numberParticleTypes,numberParticleTypes,numberParticleTypes]
-PARAM_FREE_lambda2   double    length^-1 [numberParticleTypes,numberParticleTypes,numberParticleTypes]
-PARAM_FREE_lambda3   double    length^-1 [numberParticleTypes,numberParticleTypes,numberParticleTypes]
-PARAM_FREE_beta      double    none      [numberParticleTypes,numberParticleTypes,numberParticleTypes]
-PARAM_FREE_n         double    none      [numberParticleTypes,numberParticleTypes,numberParticleTypes]
-PARAM_FREE_m         integer   none      [numberParticleTypes,numberParticleTypes,numberParticleTypes]
-PARAM_FREE_gamma     double    none      [numberParticleTypes,numberParticleTypes,numberParticleTypes]
-PARAM_FREE_c         double    none      [numberParticleTypes,numberParticleTypes,numberParticleTypes]
-PARAM_FREE_d         double    none      [numberParticleTypes,numberParticleTypes,numberParticleTypes]
-PARAM_FREE_h         double    none      [numberParticleTypes,numberParticleTypes,numberParticleTypes]
-PARAM_FREE_Rc        double    length    [numberParticleTypes,numberParticleTypes,numberParticleTypes]
-PARAM_FREE_Dc        double    length    [numberParticleTypes,numberParticleTypes,numberParticleTypes]
+PARAM_FREE_A         double    energy    [numberOfSpecies,numberOfSpecies,numberOfSpecies]
+PARAM_FREE_B         double    energy    [numberOfSpecies,numberOfSpecies,numberOfSpecies]
+PARAM_FREE_lambda1   double    length^-1 [numberOfSpecies,numberOfSpecies,numberOfSpecies]
+PARAM_FREE_lambda2   double    length^-1 [numberOfSpecies,numberOfSpecies,numberOfSpecies]
+PARAM_FREE_lambda3   double    length^-1 [numberOfSpecies,numberOfSpecies,numberOfSpecies]
+PARAM_FREE_beta      double    none      [numberOfSpecies,numberOfSpecies,numberOfSpecies]
+PARAM_FREE_n         double    none      [numberOfSpecies,numberOfSpecies,numberOfSpecies]
+PARAM_FREE_m         integer   none      [numberOfSpecies,numberOfSpecies,numberOfSpecies]
+PARAM_FREE_gamma     double    none      [numberOfSpecies,numberOfSpecies,numberOfSpecies]
+PARAM_FREE_c         double    none      [numberOfSpecies,numberOfSpecies,numberOfSpecies]
+PARAM_FREE_d         double    none      [numberOfSpecies,numberOfSpecies,numberOfSpecies]
+PARAM_FREE_h         double    none      [numberOfSpecies,numberOfSpecies,numberOfSpecies]
+PARAM_FREE_Rc        double    length    [numberOfSpecies,numberOfSpecies,numberOfSpecies]
+PARAM_FREE_Dc        double    length    [numberOfSpecies,numberOfSpecies,numberOfSpecies]
