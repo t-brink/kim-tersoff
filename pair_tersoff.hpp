@@ -104,7 +104,10 @@ class PairTersoff /*: public Pair*/ {
         gamma(N,N,N),
         m(N,N,N),
         n(N,N,N), beta(N,N,N),
-        D(N,N,N), R(N,N,N) {}
+        D(N,N,N), R(N,N,N)
+    {
+      shape[0] = N; shape[1] = N; shape[2] = N;
+    }
     // Copy data from a Params array.
     void from_params(const Array3D<Params>& p) {
       for (int i = 0; i < A.extent(0); ++i)
@@ -155,6 +158,9 @@ class PairTersoff /*: public Pair*/ {
     Array3D<double> n, beta;
     // Cutoff related.
     Array3D<double> D, R;
+    // The shape of all parameter arrays. Needed for calls to
+    // KIM_API_model::set_shape().
+    int shape[3];
   };
 
   PairTersoff(std::string parameter_file,

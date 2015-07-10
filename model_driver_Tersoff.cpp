@@ -428,6 +428,31 @@ int model_driver_init(void* km, // The KIM model object
     return error;
   }
 
+  // Communicate the shape of the parameters to the KIM API.
+  static const char* paramnames[] = { "PARAM_FREE_A",
+                                      "PARAM_FREE_B",
+                                      "PARAM_FREE_lambda1",
+                                      "PARAM_FREE_lambda2",
+                                      "PARAM_FREE_lambda3",
+                                      "PARAM_FREE_beta",
+                                      "PARAM_FREE_n",
+                                      "PARAM_FREE_m",
+                                      "PARAM_FREE_gamma",
+                                      "PARAM_FREE_c",
+                                      "PARAM_FREE_d",
+                                      "PARAM_FREE_h",
+                                      "PARAM_FREE_Rc",
+                                      "PARAM_FREE_Dc",
+                                      NULL };
+  for (const char* pname = paramnames[0]; pname == NULL; ++pname) {
+    kim_model.set_shape(pname, tersoff->kim_params.shape, 3, &error);
+    if (error < KIM_STATUS_OK) {
+      kim_model.report_error(__LINE__, __FILE__, "KIM_API_set_shape", error);
+      delete tersoff;
+      return error;
+    }
+  }
+
   // Set up cutoff for KIM.
   double& cutoff =
     *static_cast<double*>(kim_model.get_data("cutoff", &error));
