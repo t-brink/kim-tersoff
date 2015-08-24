@@ -11,4 +11,9 @@ The core part of energy/force calculation is adapted from code in
 LAMMPS.  LAMMPS is licensed under GPLv2, which then also applies to
 the whole model driver.  See the LICENSE file for details.
 
+The directory "helpers" contains a python script to convert different
+variants of Tersoff-type potentials to the input file format expected
+by this model driver (and LAMMPS).  There are also some example input
+files for the script.
+
 Author: Tobias Brink <brink@mm.tu-darmstadt.de>
