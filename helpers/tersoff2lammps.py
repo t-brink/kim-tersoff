@@ -49,7 +49,7 @@ A (eV)                A (eV)                    gamma
 B (eV)                B (eV)                    S
 lam1 (A^-1)           lambda (A^-1)             beta (A^-1)
 lam2 (A^-1)           mu (A^-1)                 D0 (eV)
-beta                  beta                      R0 (A)
+beta                  beta                      r0 (A)
 n                     n                         c
 c                     c                         d
 d                     d                         h
@@ -212,7 +212,69 @@ elif cp["settings"]["style"] == "tersoff1989":
                                 ]))
                         f.write("\n")
 elif cp["settings"]["style"] == "albe2002":
-    print("NOT IMPLEMENTED, YET")
+    elements = set()
+    terms = set()
+    params = {}
+    # Find all elements.
+    for section in cp:
+        if section in ("settings", "DEFAULT"): continue
+        try:
+            elem1, elem2 = section.split("-")
+        except ValueError:
+            print("section headings must follow the format element-element")
+            sys.exit(3)
+        pair = frozenset([elem1, elem2])
+        if pair in terms:
+            print("Section is double: {}".format(section))
+            sys.exit(5)
+        elements.add(elem1)
+        elements.add(elem2)
+        terms.add(pair)
+        #
+        params[pair] = cp[section]
+    # Check for completeness.
+    for elem1 in elements:
+        for elem2 in elements:
+            p = frozenset([elem1, elem2])
+            if p not in params:
+                print("Parameters missing for {}-{}.".format(elem1, elem2))
+                sys.exit(6)
+    # Write.
+    with open(sys.argv[2], "w") as f:
+        if "comment" in cp["settings"]:
+            f.write("# {}\n\n".format(cp["settings"]["comment"]))
+        m = 1
+        for elem1 in sorted(elements):
+            for elem2 in sorted(elements):
+                for elem3 in sorted(elements):
+                    gamma = params[frozenset([elem1, elem3])]["gamma"]
+                    lambda3 = 2 * float(params[frozenset([elem1, elem3])]["mu"])
+                    c = params[frozenset([elem1, elem3])]["c"]
+                    d = params[frozenset([elem1, elem3])]["d"]
+                    costheta0 = -float(params[frozenset([elem1, elem3])]["h"])
+                    if elem2 == elem3:
+                        n = 1
+                        beta = 1
+                        _beta = float(params[frozenset([elem1, elem2])]["beta"])
+                        _S = float(params[frozenset([elem1, elem2])]["S"])
+                        _D0 = float(params[frozenset([elem1, elem2])]["D0"])
+                        _r0 = float(params[frozenset([elem1, elem2])]["r0"])
+                        lambda2 = _beta * math.sqrt(2 / _S)
+                        B = _S * _D0 / (_S - 1) * math.exp(lambda2 * _r0)
+                        lambda1 = _beta * math.sqrt(2 * _S)
+                        A = _D0 / (_S - 1) * math.exp(lambda1 * _r0)
+                    else:
+                        n = beta = lambda2 = B = lambda1 = A = 0
+                    R = params[frozenset([elem1, elem3])]["Rcut"]
+                    D = params[frozenset([elem1, elem3])]["Dcut"]
+                    f.write(
+                        " ".join(
+                            str(i) for i in [
+                                    elem1, elem2, elem3, m, gamma, lambda3,
+                                    c, d, costheta0, n, beta, lambda2, B,
+                                    R, D, lambda1, A
+                            ]))
+                    f.write("\n")
 else:
     print("Unsupported style '{}'".format(c["settings"]["style"]))
     sys.exit(1)
