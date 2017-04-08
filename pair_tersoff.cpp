@@ -14,7 +14,7 @@
 /* ----------------------------------------------------------------------
    Contributing author: Aidan Thompson (SNL)
 
-   Modified for use with KIM by Tobias Brink (2012,2013,2014).
+   Modified for use with KIM by Tobias Brink (2012,2013,2014,2017).
 ------------------------------------------------------------------------- */
 
 #include "pair_tersoff.hpp"
@@ -228,9 +228,12 @@ void PairTersoff::compute(KIM_API_model& kim_model,
         const double fz = delr_ij[2]*fpair;
 
         if (forces) {
-          (*forces)(i,0) -= fx;
-          (*forces)(i,1) -= fy;
-          (*forces)(i,2) -= fz;
+          (*forces)(i,0) -= 0.5*fx;
+          (*forces)(i,1) -= 0.5*fy;
+          (*forces)(i,2) -= 0.5*fz;
+          (*forces)(j,0) += 0.5*fx;
+          (*forces)(j,1) += 0.5*fy;
+          (*forces)(j,2) += 0.5*fz;
         }
 
         if (virial || particleVirial) {
