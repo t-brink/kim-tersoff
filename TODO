@@ -1,36 +1,3 @@
-* Publish two-body parameters as N*N instead of N*N*N [done]
-
-** The internal representation would still be N^3, see
-   pair_tersoff.hpp: struct KIMParams
-
-** although check if the performance would be affected if keeping
-   separate arrays for two-body and three-body parameters (Rc/Dc may
-   need to be in both, this needs a benchmark)
-
-   The scheme with double storage for the coutoff would use an
-   additional 40 bytes for a single element, but as soon as we have a
-   second element, we would save around 280 bytes (if my calculations are
-   correct); so it would be worth it.
-
-** This is useful, since some entries are unused
-
-** SPLIT THE STRUCT "Params":
-
-*** Params2: parameters used for two-body calc (include R/D/cutsq copies)
-
-*** Params3: parameters used for three-body calc, excluding those that
-    are not used in the actual calculation (c, d, cut; I think)
-
-*** the "unused" base parameters should be kept only in the published
-    KIM parameter arrays; "cut" can probably go, it is R+D but is only
-    used when finding the max cutoff (PairTersoff::max_cutoff); this
-    needs a little bit of hacking of PairTersoff::KIMParams::from_params,
-    but the latter is only used when reading the parameters from the
-    file at initialization and never afterwards. Therefore this method
-    should become private to "PairTersoff" or be integrated into
-    PairTersoff::read_params.
-
-
 * optimize
 
 ** parts of force calculation are still done even if not needed

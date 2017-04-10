@@ -80,21 +80,35 @@ class PairTersoff /*: public Pair*/ {
   // can lead to a slowdown of up to 5% because the data is not in
   // adjacent memory.  The parameter data is not so much, so we will
   // copy between the KIM-published parameters and this internal data.
-  struct Params {
-    double A, B;
-    double lam1, lam2, lam3;
-    double c, d, h;
-    double gamma;
-    int m;
-    double n, beta;
+  struct Params2 {
     // Cutoff related.
-    double D, R;
-    double cut, cutsq;
+    double cutsq;
+    double R, D;
+    // Two-body parameters.
+    double lam1;
+    double A;
+    double B;
+    double lam2;
+    double beta;
+    double n;
     // Pre-computed.
     double n_precomp[4];
+  };
+  struct Params3 {
+    // Cutoff related.
+    double cutsq;
+    double R, D;
+    // Three-body parameters.
+    int m;
+    double lam3;
+    double gamma;
+    double h;
+    // Pre-computed.
     double c2;    // c^2
     double d2;    // d^2
     double c2_d2; // c^2 / d^2
+    // Not used in computation.
+    //double c, d;
   };
   struct KIMParams {
     explicit KIMParams(int N) // Number of particle types
@@ -109,47 +123,47 @@ class PairTersoff /*: public Pair*/ {
       shape2[0] = N; shape2[1] = N;
       shape3[0] = N; shape3[1] = N; shape3[2] = N;
     }
-    // Copy data from a Params array.
-    void from_params(const Array3D<Params>& p) {
+    // Copy data from a Params array. 
+    void from_params(const Array2D<Params2>& p2, const Array3D<Params3>& p3) {
       for (int i = 0; i < A.extent(0); ++i)
         for (int j = 0; j < A.extent(1); ++j) {
-          A(i,j) = p(i,j,j).A;
-          B(i,j) = p(i,j,j).B;
-          lam1(i,j) = p(i,j,j).lam1;
-          lam2(i,j) = p(i,j,j).lam2;
-          n(i,j) = p(i,j,j).n;
-          beta(i,j) = p(i,j,j).beta;
+          A(i,j) = p2(i,j).A;
+          B(i,j) = p2(i,j).B;
+          lam1(i,j) = p2(i,j).lam1;
+          lam2(i,j) = p2(i,j).lam2;
+          n(i,j) = p2(i,j).n;
+          beta(i,j) = p2(i,j).beta;
           for (int k = 0; k < lam3.extent(2); ++k) {
-            lam3(i,j,k) = p(i,j,k).lam3;
-            c(i,j,k) = p(i,j,k).c;
-            d(i,j,k) = p(i,j,k).d;
-            h(i,j,k) = p(i,j,k).h;
-            gamma(i,j,k) = p(i,j,k).gamma;
-            m(i,j,k) = p(i,j,k).m;
-            D(i,j,k) = p(i,j,k).D;
-            R(i,j,k) = p(i,j,k).R;
+            lam3(i,j,k) = p3(i,j,k).lam3;
+            //c(i,j,k) = p3(i,j,k).c; // those are not kept there,
+            //d(i,j,k) = p3(i,j,k).d; // but only in derived form c², d²
+            h(i,j,k) = p3(i,j,k).h;
+            gamma(i,j,k) = p3(i,j,k).gamma;
+            m(i,j,k) = p3(i,j,k).m;
+            D(i,j,k) = p3(i,j,k).D;
+            R(i,j,k) = p3(i,j,k).R;
           }
         }
     };
     // Copy data to a Params array.
-    void to_params(Array3D<Params>& p) const {
+    void to_params(Array2D<Params2>& p2, Array3D<Params3>& p3) const {
       for (int i = 0; i < lam3.extent(0); ++i)
         for (int j = 0; j < lam3.extent(1); ++j)
           for (int k = 0; k < lam3.extent(2); ++k) {
-            p(i,j,k).A = A(i,j);
-            p(i,j,k).B = B(i,j);
-            p(i,j,k).lam1 = lam1(i,j);
-            p(i,j,k).lam2 = lam2(i,j);
-            p(i,j,k).lam3 = lam3(i,j,k);
-            p(i,j,k).c = c(i,j,k);
-            p(i,j,k).d = d(i,j,k);
-            p(i,j,k).h = h(i,j,k);
-            p(i,j,k).gamma = gamma(i,j,k);
-            p(i,j,k).m = m(i,j,k);
-            p(i,j,k).n = n(i,j);
-            p(i,j,k).beta = beta(i,j);
-            p(i,j,k).D = D(i,j,k);
-            p(i,j,k).R = R(i,j,k);
+            p2(i,j).A = A(i,j);
+            p2(i,j).B = B(i,j);
+            p2(i,j).lam1 = lam1(i,j);
+            p2(i,j).lam2 = lam2(i,j);
+            p3(i,j,k).lam3 = lam3(i,j,k);
+            //p3(i,j,k).c = c(i,j,k); // those are not kept there,
+            //p3(i,j,k).d = d(i,j,k); // but only in derived form c², d²
+            p3(i,j,k).h = h(i,j,k);
+            p3(i,j,k).gamma = gamma(i,j,k);
+            p3(i,j,k).m = m(i,j,k);
+            p2(i,j).n = n(i,j);
+            p2(i,j).beta = beta(i,j);
+            p3(i,j,k).D = D(i,j,k);
+            p3(i,j,k).R = R(i,j,k);
           }
     }
     Array2D<double> A, B;
@@ -192,7 +206,8 @@ class PairTersoff /*: public Pair*/ {
 
  private:
   int n_spec;                   // number of species
-  Array3D<Params> params;       // n_spec*n_spec*n_spec array of parameters
+  Array2D<Params2> params2;     // n_spec*n_spec array of parameters
+  Array3D<Params3> params3;     // n_spec*n_spec*n_spec array of parameters
   double max_cutoff;            // max cutoff for all elements
   std::map<int,std::string> to_spec;  // map element index to element
                                       // name, needed for user-
