@@ -14,8 +14,6 @@
 
 ** This is useful, since some entries are unused
 
-** the internal parameter "cutmin" could probably go away! it is currently unused
-
 
 * optimize
 

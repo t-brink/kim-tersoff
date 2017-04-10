@@ -89,7 +89,7 @@ class PairTersoff /*: public Pair*/ {
     double n, beta;
     // Cutoff related.
     double D, R;
-    double cut, cutmin, cutsq;
+    double cut, cutsq;
     // Pre-computed.
     double n_precomp[4];
     double c2;    // c^2

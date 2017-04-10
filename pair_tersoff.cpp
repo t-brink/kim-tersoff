@@ -695,8 +695,6 @@ void PairTersoff::prepare_params() {
         // Cutoff.
         temp_params.cut =
           temp_params.R + temp_params.D; // max cutoff.
-        temp_params.cutmin =
-          temp_params.R - temp_params.D; // below this the cutoff value is 1.0
         temp_params.cutsq =
           temp_params.cut * temp_params.cut; // for fast check if inside cutoff
         // Get the cutoff to pass to KIM, which is the biggest cutoff.
