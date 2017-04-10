@@ -1,4 +1,4 @@
-* Publish two-body parameters as N*N instead of N*N*N
+* Publish two-body parameters as N*N instead of N*N*N [done]
 
 ** The internal representation would still be N^3, see
    pair_tersoff.hpp: struct KIMParams
@@ -56,6 +56,8 @@
 ** both of those may be interesting for the project at large
 
 ** why are there no properties on the KIM website for the Tersoff driver?
+
+** especially test changing the published parameters!
 
 
 * comment code better

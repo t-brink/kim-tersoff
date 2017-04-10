@@ -407,13 +407,13 @@ int model_driver_init(void* km, // The KIM model object
                       "compute", 1, &compute, 1,
                       "reinit",  1, &reinit,  1,
                       "destroy", 1, &destroy, 1,
-                      "PARAM_FREE_A", 1, &tersoff->kim_params.A(0,0,0), 1,
-                      "PARAM_FREE_B", 1, &tersoff->kim_params.B(0,0,0), 1,
-                      "PARAM_FREE_lambda1", 1, &tersoff->kim_params.lam1(0,0,0), 1,
-                      "PARAM_FREE_lambda2", 1, &tersoff->kim_params.lam2(0,0,0), 1,
+                      "PARAM_FREE_A", 1, &tersoff->kim_params.A(0,0), 1,
+                      "PARAM_FREE_B", 1, &tersoff->kim_params.B(0,0), 1,
+                      "PARAM_FREE_lambda1", 1, &tersoff->kim_params.lam1(0,0), 1,
+                      "PARAM_FREE_lambda2", 1, &tersoff->kim_params.lam2(0,0), 1,
                       "PARAM_FREE_lambda3", 1, &tersoff->kim_params.lam3(0,0,0), 1,
-                      "PARAM_FREE_beta", 1, &tersoff->kim_params.beta(0,0,0), 1,
-                      "PARAM_FREE_n", 1, &tersoff->kim_params.n(0,0,0), 1,
+                      "PARAM_FREE_beta", 1, &tersoff->kim_params.beta(0,0), 1,
+                      "PARAM_FREE_n", 1, &tersoff->kim_params.n(0,0), 1,
                       "PARAM_FREE_m", 1, &tersoff->kim_params.m(0,0,0), 1,
                       "PARAM_FREE_gamma", 1, &tersoff->kim_params.gamma(0,0,0), 1,
                       "PARAM_FREE_c", 1, &tersoff->kim_params.c(0,0,0), 1,
@@ -429,23 +429,35 @@ int model_driver_init(void* km, // The KIM model object
   }
 
   // Communicate the shape of the parameters to the KIM API.
-  static const char* paramnames[] = { "PARAM_FREE_A",
-                                      "PARAM_FREE_B",
-                                      "PARAM_FREE_lambda1",
-                                      "PARAM_FREE_lambda2",
-                                      "PARAM_FREE_lambda3",
-                                      "PARAM_FREE_beta",
-                                      "PARAM_FREE_n",
-                                      "PARAM_FREE_m",
-                                      "PARAM_FREE_gamma",
-                                      "PARAM_FREE_c",
-                                      "PARAM_FREE_d",
-                                      "PARAM_FREE_h",
-                                      "PARAM_FREE_Rc",
-                                      "PARAM_FREE_Dc",
-                                      NULL };
-  for (const char* pname = paramnames[0]; pname == NULL; ++pname) {
-    kim_model.set_shape(pname, tersoff->kim_params.shape, 3, &error);
+  // Two-body parameters.
+  static const char* paramnames2[] = { "PARAM_FREE_A",
+                                       "PARAM_FREE_B",
+                                       "PARAM_FREE_lambda1",
+                                       "PARAM_FREE_lambda2",
+                                       "PARAM_FREE_beta",
+                                       "PARAM_FREE_n",
+                                       NULL };
+  for (const char* pname = paramnames2[0]; pname == NULL; ++pname) {
+    kim_model.set_shape(pname, tersoff->kim_params.shape2, 3, &error);
+    if (error < KIM_STATUS_OK) {
+      kim_model.report_error(__LINE__, __FILE__, "KIM_API_set_shape", error);
+      delete tersoff;
+      return error;
+    }
+  }
+
+  // Three-body parameters.
+  static const char* paramnames3[] = { "PARAM_FREE_lambda3",
+                                       "PARAM_FREE_m",
+                                       "PARAM_FREE_gamma",
+                                       "PARAM_FREE_c",
+                                       "PARAM_FREE_d",
+                                       "PARAM_FREE_h",
+                                       "PARAM_FREE_Rc",
+                                       "PARAM_FREE_Dc",
+                                       NULL };
+  for (const char* pname = paramnames3[0]; pname == NULL; ++pname) {
+    kim_model.set_shape(pname, tersoff->kim_params.shape3, 3, &error);
     if (error < KIM_STATUS_OK) {
       kim_model.report_error(__LINE__, __FILE__, "KIM_API_set_shape", error);
       delete tersoff;

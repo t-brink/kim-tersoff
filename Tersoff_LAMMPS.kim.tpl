@@ -103,14 +103,18 @@ particleVirial       double    energy    [numberOfParticles,6] optional
 ## Parameters ##########################################################
 MODEL_PARAMETERS:
 
+# two-body
 # variable           type      unit      dimensions
-PARAM_FREE_A         double    energy    [:,:,:]
-PARAM_FREE_B         double    energy    [:,:,:]
-PARAM_FREE_lambda1   double    length^-1 [:,:,:]
-PARAM_FREE_lambda2   double    length^-1 [:,:,:]
+PARAM_FREE_A         double    energy    [:,:]
+PARAM_FREE_B         double    energy    [:,:]
+PARAM_FREE_lambda1   double    length^-1 [:,:]
+PARAM_FREE_lambda2   double    length^-1 [:,:]
+PARAM_FREE_beta      double    none      [:,:]
+PARAM_FREE_n         double    none      [:,:]
+
+# three-body
+# variable           type      unit      dimensions
 PARAM_FREE_lambda3   double    length^-1 [:,:,:]
-PARAM_FREE_beta      double    none      [:,:,:]
-PARAM_FREE_n         double    none      [:,:,:]
 PARAM_FREE_m         integer   none      [:,:,:]
 PARAM_FREE_gamma     double    none      [:,:,:]
 PARAM_FREE_c         double    none      [:,:,:]

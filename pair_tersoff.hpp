@@ -12,7 +12,7 @@
 ------------------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------------
-   Modified for use with KIM by Tobias Brink (2012,2013).
+   Modified for use with KIM by Tobias Brink (2012,2013,2017).
 ------------------------------------------------------------------------- */
 
 
@@ -98,69 +98,73 @@ class PairTersoff /*: public Pair*/ {
   };
   struct KIMParams {
     explicit KIMParams(int N) // Number of particle types
-      : A(N,N,N), B(N,N,N),
-        lam1(N,N,N), lam2(N,N,N), lam3(N,N,N),
+      : A(N,N), B(N,N),
+        lam1(N,N), lam2(N,N), lam3(N,N,N),
         c(N,N,N), d(N,N,N), h(N,N,N),
         gamma(N,N,N),
         m(N,N,N),
-        n(N,N,N), beta(N,N,N),
+        n(N,N), beta(N,N),
         D(N,N,N), R(N,N,N)
     {
-      shape[0] = N; shape[1] = N; shape[2] = N;
+      shape2[0] = N; shape2[1] = N;
+      shape3[0] = N; shape3[1] = N; shape3[2] = N;
     }
     // Copy data from a Params array.
     void from_params(const Array3D<Params>& p) {
       for (int i = 0; i < A.extent(0); ++i)
-        for (int j = 0; j < A.extent(1); ++j)
-          for (int k = 0; k < A.extent(2); ++k) {
-            A(i,j,k) = p(i,j,k).A;
-            B(i,j,k) = p(i,j,k).B;
-            lam1(i,j,k) = p(i,j,k).lam1;
-            lam2(i,j,k) = p(i,j,k).lam2;
+        for (int j = 0; j < A.extent(1); ++j) {
+          A(i,j) = p(i,j,j).A;
+          B(i,j) = p(i,j,j).B;
+          lam1(i,j) = p(i,j,j).lam1;
+          lam2(i,j) = p(i,j,j).lam2;
+          n(i,j) = p(i,j,j).n;
+          beta(i,j) = p(i,j,j).beta;
+          for (int k = 0; k < lam3.extent(2); ++k) {
             lam3(i,j,k) = p(i,j,k).lam3;
             c(i,j,k) = p(i,j,k).c;
             d(i,j,k) = p(i,j,k).d;
             h(i,j,k) = p(i,j,k).h;
             gamma(i,j,k) = p(i,j,k).gamma;
             m(i,j,k) = p(i,j,k).m;
-            n(i,j,k) = p(i,j,k).n;
-            beta(i,j,k) = p(i,j,k).beta;
             D(i,j,k) = p(i,j,k).D;
             R(i,j,k) = p(i,j,k).R;
           }
+        }
     };
     // Copy data to a Params array.
     void to_params(Array3D<Params>& p) const {
-      for (int i = 0; i < A.extent(0); ++i)
-        for (int j = 0; j < A.extent(1); ++j)
-          for (int k = 0; k < A.extent(2); ++k) {
-            p(i,j,k).A = A(i,j,k);
-            p(i,j,k).B = B(i,j,k);
-            p(i,j,k).lam1 = lam1(i,j,k);
-            p(i,j,k).lam2 = lam2(i,j,k);
+      for (int i = 0; i < lam3.extent(0); ++i)
+        for (int j = 0; j < lam3.extent(1); ++j)
+          for (int k = 0; k < lam3.extent(2); ++k) {
+            p(i,j,k).A = A(i,j);
+            p(i,j,k).B = B(i,j);
+            p(i,j,k).lam1 = lam1(i,j);
+            p(i,j,k).lam2 = lam2(i,j);
             p(i,j,k).lam3 = lam3(i,j,k);
             p(i,j,k).c = c(i,j,k);
             p(i,j,k).d = d(i,j,k);
             p(i,j,k).h = h(i,j,k);
             p(i,j,k).gamma = gamma(i,j,k);
             p(i,j,k).m = m(i,j,k);
-            p(i,j,k).n = n(i,j,k);
-            p(i,j,k).beta = beta(i,j,k);
+            p(i,j,k).n = n(i,j);
+            p(i,j,k).beta = beta(i,j);
             p(i,j,k).D = D(i,j,k);
             p(i,j,k).R = R(i,j,k);
           }
     }
-    Array3D<double> A, B;
-    Array3D<double> lam1, lam2, lam3;
+    Array2D<double> A, B;
+    Array2D<double> lam1, lam2;
+    Array3D<double> lam3;
     Array3D<double> c, d, h;
     Array3D<double> gamma;
     Array3D<int> m;
-    Array3D<double> n, beta;
+    Array2D<double> n, beta;
     // Cutoff related.
     Array3D<double> D, R;
     // The shape of all parameter arrays. Needed for calls to
     // KIM_API_model::set_shape().
-    int shape[3];
+    int shape2[2];
+    int shape3[3];
   };
 
   PairTersoff(std::string parameter_file,
