@@ -14,6 +14,22 @@
 
 ** This is useful, since some entries are unused
 
+** SPLIT THE STRUCT "Params":
+
+*** Params2: parameters used for two-body calc (include R/D/cutsq copies)
+
+*** Params3: parameters used for three-body calc, excluding those that
+    are not used in the actual calculation (c, d, cut; I think)
+
+*** the "unused" base parameters should be kept only in the published
+    KIM parameter arrays; "cut" can probably go, it is R+D but is only
+    used when finding the max cutoff (PairTersoff::max_cutoff); this
+    needs a little bit of hacking of PairTersoff::KIMParams::from_params,
+    but the latter is only used when reading the parameters from the
+    file at initialization and never afterwards. Therefore this method
+    should become private to "PairTersoff" or be integrated into
+    PairTersoff::read_params.
+
 
 * optimize
 
