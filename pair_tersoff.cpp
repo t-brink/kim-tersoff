@@ -149,8 +149,6 @@ void PairTersoff::compute(KIM_API_model& kim_model,
 
   bool cannot_use_half_list = (!use_neighbor_list ||
                                (access_mode != KIM_LOCATOR_MODE));
-  if (cannot_use_half_list)
-    cout << "PERFORMANCE IS FUCKED" << endl;
 
   // loop over full neighbor list of my atoms
 
