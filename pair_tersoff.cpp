@@ -62,6 +62,23 @@ PairTersoff::~PairTersoff()
 {
 }
 
+/* Helper to check if an atom is a ghost atom --------------------------- */
+bool is_ghost(KIM_API_model& kim_model, int j, int mode) {
+  int num_neigh = 0;
+  int jj;          // unused
+  int* neighbors;  // unused
+  double* distvec; // unused
+  int error =
+    kim_model.get_neigh(mode, j, &jj, &num_neigh, &neighbors, &distvec);
+  if (error < KIM_STATUS_OK) {
+    kim_model.report_error(__LINE__, __FILE__,
+                           "KIM_API_get_neigh",
+                           error);
+    throw runtime_error("compute: Error in KIM_API_get_neigh");
+  }
+  return num_neigh == 0;
+}
+
 /* ---------------------------------------------------------------------- */
 
 void PairTersoff::compute(KIM_API_model& kim_model,
@@ -129,6 +146,11 @@ void PairTersoff::compute(KIM_API_model& kim_model,
     n_neigh = n_atoms;
     distvec = NULL;
   }
+
+  bool cannot_use_half_list = (!use_neighbor_list ||
+                               (access_mode != KIM_LOCATOR_MODE));
+  if (cannot_use_half_list)
+    cout << "PERFORMANCE IS FUCKED" << endl;
 
   // loop over full neighbor list of my atoms
 
@@ -206,60 +228,76 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       const double fc_ij = ters_fc(r_ij, R, D); // Value of the cutoff function.
       const double dfc_ij = ters_fc_d(r_ij, R, D); // Derivative of fc_ij.
 
-      // two-body interactions
+      // two-body interactions, skip half of them unless j is a ghost
+      // atom and only if using neighbor list with locator
+      const bool j_ghost =
+        cannot_use_half_list ? true : is_ghost(kim_model, j, 1);
+      if (cannot_use_half_list || j_ghost || (i < j)) {
+        const double lam1 = params2(itype,jtype).lam1;
+        const double A = params2(itype,jtype).A;
 
-      const double lam1 = params2(itype,jtype).lam1;
-      const double A = params2(itype,jtype).A;
+        double evdwl; // Particle energy.
+        const double fpair =
+          repulsive(r_ij, fc_ij, dfc_ij, lam1, A, eflag, evdwl);
 
-      double evdwl; // Particle energy.
-      const double fpair =
-        repulsive(r_ij, fc_ij, dfc_ij, lam1, A, eflag, evdwl);
+        const double half_prefactor = j_ghost ? 0.5 : 1.0;
 
-      if (energy)
-        *energy += 0.5 * evdwl;
+        if (energy)
+          *energy += half_prefactor * evdwl;
 
-      if (atom_energy) {
-        atom_energy[i] += 0.5 * evdwl;
-      }
-
-      if (forces || virial || particleVirial) {
-        const double fx = delr_ij[0]*fpair;
-        const double fy = delr_ij[1]*fpair;
-        const double fz = delr_ij[2]*fpair;
-
-        if (forces) {
-          (*forces)(i,0) -= 0.5*fx;
-          (*forces)(i,1) -= 0.5*fy;
-          (*forces)(i,2) -= 0.5*fz;
-          (*forces)(j,0) += 0.5*fx;
-          (*forces)(j,1) += 0.5*fy;
-          (*forces)(j,2) += 0.5*fz;
+        if (atom_energy) {
+          atom_energy[i] += 0.5 * evdwl;
+          if (!j_ghost)
+            atom_energy[j] += 0.5 * evdwl;
         }
 
-        if (virial || particleVirial) {
-          const double vxx = 0.5 * delr_ij[0] * fx;
-          const double vyy = 0.5 * delr_ij[1] * fy;
-          const double vzz = 0.5 * delr_ij[2] * fz;
-          const double vyz = 0.5 * delr_ij[1] * fz;
-          const double vxz = 0.5 * delr_ij[0] * fz;
-          const double vxy = 0.5 * delr_ij[0] * fy;
+        if (forces || virial || particleVirial) {
+          const double fx = delr_ij[0]*fpair;
+          const double fy = delr_ij[1]*fpair;
+          const double fz = delr_ij[2]*fpair;
 
-          if (virial) {
-            virial[0] -= vxx;
-            virial[1] -= vyy;
-            virial[2] -= vzz;
-            virial[3] -= vyz;
-            virial[4] -= vxz;
-            virial[5] -= vxy;
+          if (forces) {
+            (*forces)(i,0) -= half_prefactor*fx;
+            (*forces)(i,1) -= half_prefactor*fy;
+            (*forces)(i,2) -= half_prefactor*fz;
+            (*forces)(j,0) += half_prefactor*fx;
+            (*forces)(j,1) += half_prefactor*fy;
+            (*forces)(j,2) += half_prefactor*fz;
           }
 
-          if (particleVirial) {
-            (*particleVirial)(i,0) -= vxx;
-            (*particleVirial)(i,1) -= vyy;
-            (*particleVirial)(i,2) -= vzz;
-            (*particleVirial)(i,3) -= vyz;
-            (*particleVirial)(i,4) -= vxz;
-            (*particleVirial)(i,5) -= vxy;
+          if (virial || particleVirial) {
+            const double vxx = delr_ij[0] * fx;
+            const double vyy = delr_ij[1] * fy;
+            const double vzz = delr_ij[2] * fz;
+            const double vyz = delr_ij[1] * fz;
+            const double vxz = delr_ij[0] * fz;
+            const double vxy = delr_ij[0] * fy;
+
+            if (virial) {
+              virial[0] -= half_prefactor * vxx;
+              virial[1] -= half_prefactor * vyy;
+              virial[2] -= half_prefactor * vzz;
+              virial[3] -= half_prefactor * vyz;
+              virial[4] -= half_prefactor * vxz;
+              virial[5] -= half_prefactor * vxy;
+            }
+
+            if (particleVirial) {
+              (*particleVirial)(i,0) -= 0.5 * vxx;
+              (*particleVirial)(i,1) -= 0.5 * vyy;
+              (*particleVirial)(i,2) -= 0.5 * vzz;
+              (*particleVirial)(i,3) -= 0.5 * vyz;
+              (*particleVirial)(i,4) -= 0.5 * vxz;
+              (*particleVirial)(i,5) -= 0.5 * vxy;
+              if (!j_ghost) {
+                (*particleVirial)(j,0) -= 0.5 * vxx;
+                (*particleVirial)(j,1) -= 0.5 * vyy;
+                (*particleVirial)(j,2) -= 0.5 * vzz;
+                (*particleVirial)(j,3) -= 0.5 * vyz;
+                (*particleVirial)(j,4) -= 0.5 * vxz;
+                (*particleVirial)(j,5) -= 0.5 * vxy;
+              }
+            }
           }
         }
       }
@@ -324,6 +362,7 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       const double* n_precomp = params2(itype,jtype).n_precomp;
 
       double prefactor; // -0.5 * fa * ∇bij
+      double evdwl; // Particle energy.
       const double fzeta =
         force_zeta(r_ij, fc_ij, dfc_ij, zeta_ij, B, lam2, beta, n, n_precomp,
                    prefactor, eflag, evdwl);
