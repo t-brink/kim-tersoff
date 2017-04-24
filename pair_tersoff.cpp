@@ -147,8 +147,8 @@ void PairTersoff::compute(KIM_API_model& kim_model,
     distvec = NULL;
   }
 
-  bool cannot_use_half_list = (!use_neighbor_list ||
-                               (access_mode != KIM_LOCATOR_MODE));
+  const bool cannot_use_half_list = (!use_neighbor_list ||
+                                     (access_mode != KIM_LOCATOR_MODE));
 
   // loop over full neighbor list of my atoms
 
@@ -186,12 +186,9 @@ void PairTersoff::compute(KIM_API_model& kim_model,
     }
 
     const int itype = atom_types[i];
-    double xtmp, ytmp, ztmp;
-    if (!use_distvec) {
-      xtmp = atom_coords(i,0);
-      ytmp = atom_coords(i,1);
-      ztmp = atom_coords(i,2);
-    }
+    const double xtmp = atom_coords(i,0);
+    const double ytmp = atom_coords(i,1);
+    const double ztmp = atom_coords(i,2);
 
     for (int jj = 0; jj != n_neigh; ++jj) {
       int j = use_neighbor_list ? neighbors[jj] : jj;
