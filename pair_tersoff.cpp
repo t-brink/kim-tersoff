@@ -230,7 +230,7 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       // atom and only if using neighbor list with locator
       const bool j_ghost =
         cannot_use_half_list ? true : is_ghost(kim_model, j, 1);
-      if (cannot_use_half_list || j_ghost || (i < j)) {
+      if (j_ghost || (i < j)) {
         const double lam1 = params2(itype,jtype).lam1;
         const double A = params2(itype,jtype).A;
 
