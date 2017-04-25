@@ -892,8 +892,8 @@ double PairTersoff::ters_bij_d(double zeta, double beta, double n,
   const double tmp = beta * zeta;
   if (tmp > n_precomp[0]) return beta * -0.5*pow(tmp,-1.5);
   if (tmp > n_precomp[1]) return beta * (-0.5*pow(tmp,-1.5) *
-                               (1.0 - 0.5*(1.0 +  1.0/(2.0*n)) *
-                                pow(tmp,-n)));
+                                         (1.0 - (1.0 +  1.0/(2.0*n)) *
+                                          pow(tmp,-n)));
   if (tmp < n_precomp[3]) return 0.0;
   if (tmp < n_precomp[2]) return -0.5*beta * pow(tmp, n-1.0);
 
