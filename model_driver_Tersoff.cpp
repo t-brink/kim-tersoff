@@ -438,8 +438,8 @@ int model_driver_init(void* km, // The KIM model object
                                        "PARAM_FREE_beta",
                                        "PARAM_FREE_n",
                                        NULL };
-  for (const char* pname = paramnames2[0]; pname == NULL; ++pname) {
-    kim_model.set_shape(pname, tersoff->kim_params.shape2, 3, &error);
+  for (const char** pname = paramnames2; *pname != NULL; ++pname) {
+    kim_model.set_shape(*pname, tersoff->kim_params.shape2, 2, &error);
     if (error < KIM_STATUS_OK) {
       kim_model.report_error(__LINE__, __FILE__, "KIM_API_set_shape", error);
       delete tersoff;
@@ -457,8 +457,8 @@ int model_driver_init(void* km, // The KIM model object
                                        "PARAM_FREE_Rc",
                                        "PARAM_FREE_Dc",
                                        NULL };
-  for (const char* pname = paramnames3[0]; pname == NULL; ++pname) {
-    kim_model.set_shape(pname, tersoff->kim_params.shape3, 3, &error);
+  for (const char** pname = paramnames3; *pname != NULL; ++pname) {
+    kim_model.set_shape(*pname, tersoff->kim_params.shape3, 3, &error);
     if (error < KIM_STATUS_OK) {
       kim_model.report_error(__LINE__, __FILE__, "KIM_API_set_shape", error);
       delete tersoff;
