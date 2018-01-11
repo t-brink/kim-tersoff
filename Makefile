@@ -1,4 +1,4 @@
-# Copyright (c) 2012,2013,2014 Tobias Brink
+# Copyright (c) 2012,2013,2014,2018 Tobias Brink
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -19,9 +19,6 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-ifeq ($(wildcard ../Makefile.KIM_Config),)
-  $(error ../Makefile.KIM_Config does not exist.  Something is wrong with your KIM API package setup)
-endif
 include ../Makefile.KIM_Config
 
 MODEL_DRIVER_NAME := Tersoff_LAMMPS__MD_077075034781_002
