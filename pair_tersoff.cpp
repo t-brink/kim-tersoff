@@ -54,13 +54,11 @@ PairTersoff::PairTersoff(string parameter_file,
   read_params(f, type_map, energy_conv, length_conv, inv_length_conv);
 }
 
-/* ----------------------------------------------------------------------
-   check if allocated, since class can be destructed when incomplete
-------------------------------------------------------------------------- */
 
 PairTersoff::~PairTersoff()
 {
 }
+
 
 /* Helper to check if an atom is a ghost atom --------------------------- */
 bool is_ghost(KIM_API_model& kim_model, int j, int mode) {

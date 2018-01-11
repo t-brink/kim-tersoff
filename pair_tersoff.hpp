@@ -35,42 +35,42 @@ const double pi   = 3.14159265358979323846;  /* pi */
 const double pi_2 = 1.57079632679489661923;  /* pi/2 */
 const double pi_4 = 0.78539816339744830962;  /* pi/4 */
 
-  enum KIM_NBC { // Only for internal use no mapping to any integer
-                 // returned from the KIM API.
-    KIM_CLUSTER,
-    KIM_NEIGH_PURE_H,
-    KIM_NEIGH_PURE_F,
-    KIM_NEIGH_RVEC_F,
-    KIM_MI_OPBC_H,
-    KIM_MI_OPBC_F
-  };
+enum KIM_NBC { // Only for internal use; no mapping to any integer
+               // returned from the KIM API.
+  KIM_CLUSTER,
+  KIM_NEIGH_PURE_H,
+  KIM_NEIGH_PURE_F,
+  KIM_NEIGH_RVEC_F,
+  KIM_MI_OPBC_H,
+  KIM_MI_OPBC_F
+};
 
-  enum KIM_IterLoca { // constants defined by the KIM API!
-    KIM_ITERATOR_MODE = 0, // Sequential access.
-    KIM_LOCATOR_MODE = 1   // This is random access.
-  };
+enum KIM_IterLoca { // constants defined by the KIM API!
+  KIM_ITERATOR_MODE = 0, // Sequential access.
+  KIM_LOCATOR_MODE = 1   // This is random access.
+};
 
-  struct KimIndices {
-    // Required inputs.
-    int numberOfParticles;
-    int particleTypes;
-    int coordinates;
-    // Optional inputs.
-    int boxSideLengths;
-    // Optional outputs.
-    int energy;
-    //int compute_energy; // was energy requested?
-    int particleEnergy;
-    //int compute_particleEnergy; // was particleEnergy requested?
-    int forces;
-    //int compute_forces; // was forces requested?
-    int virial;
-    int particleVirial;
+struct KimIndices {
+  // Required inputs.
+  int numberOfParticles;
+  int particleTypes;
+  int coordinates;
+  // Optional inputs.
+  int boxSideLengths;
+  // Optional outputs.
+  int energy;
+  //int compute_energy; // was energy requested?
+  int particleEnergy;
+  //int compute_particleEnergy; // was particleEnergy requested?
+  int forces;
+  //int compute_forces; // was forces requested?
+  int virial;
+  int particleVirial;
 
-    // Non-index stuff.
-    KIM_NBC nbc;
-    KIM_IterLoca neigh_access_mode;
-  };
+  // Non-index stuff.
+  KIM_NBC nbc;
+  KIM_IterLoca neigh_access_mode;
+};
 
 
 class PairTersoff /*: public Pair*/ {
@@ -123,7 +123,7 @@ class PairTersoff /*: public Pair*/ {
       shape2[0] = N; shape2[1] = N;
       shape3[0] = N; shape3[1] = N; shape3[2] = N;
     }
-    // Copy data from a Params array. 
+    // Copy data from a Params array.
     void from_params(const Array2D<Params2>& p2, const Array3D<Params3>& p3) {
       for (int i = 0; i < A.extent(0); ++i)
         for (int j = 0; j < A.extent(1); ++j) {

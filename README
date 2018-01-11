@@ -1,6 +1,3 @@
-WARNING: This model driver is not thoroughly tested, yet.  It should
-WARNING: be considered beta quality!
-
 This model driver is based on the LAMMPS implementation of the Tersoff
 potential.  LAMMPS is available at http://lammps.sandia.gov/.
 

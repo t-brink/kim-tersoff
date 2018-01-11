@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2012,2013,2014 Tobias Brink
+  Copyright (c) 2012,2013,2014,2018 Tobias Brink
 
   Permission is hereby granted, free of charge, to any person obtaining
   a copy of this software and associated documentation files (the
@@ -40,12 +40,13 @@ using namespace model_driver_Tersoff;
 extern "C" {
   // Can't be both static and extern.  But this is not needed: extern
   // just tells the compiler to use C naming conventions for the
-  // function instead of C++ (name mangling).  The functions destroy
-  // and compute are not linked at compile time but passed at runtime
-  // by a pointer, so they do not need to be extern (and should not
-  // be, there could be namespace clashes).
+  // function instead of C++ (name mangling).  The functions destroy,
+  // reinit, and compute are not linked at compile time but passed at
+  // runtime by a pointer, so they do not need to be extern (and
+  // should not be, there could be namespace clashes).
   /*
   static int destroy(KIM_API_model**);
+  static int reinit(KIM_API_model**);
   static int compute(KIM_API_model**);
   */
   int model_driver_init(void*, char*, int*, int*);
