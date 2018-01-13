@@ -12,7 +12,7 @@
 ------------------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------------
-   Modified for use with KIM by Tobias Brink (2012,2013,2017).
+   Modified for use with KIM by Tobias Brink (2012,2013,2017,2018).
 ------------------------------------------------------------------------- */
 
 
@@ -148,12 +148,14 @@ class PairTersoff /*: public Pair*/ {
     // Copy data to a Params array.
     void to_params(Array2D<Params2>& p2, Array3D<Params3>& p3) const {
       for (int i = 0; i < lam3.extent(0); ++i)
-        for (int j = 0; j < lam3.extent(1); ++j)
+        for (int j = 0; j < lam3.extent(1); ++j) {
+          p2(i,j).A = A(i,j);
+          p2(i,j).B = B(i,j);
+          p2(i,j).lam1 = lam1(i,j);
+          p2(i,j).lam2 = lam2(i,j);
+          p2(i,j).R = R(i,j,j);
+          p2(i,j).D = D(i,j,j);
           for (int k = 0; k < lam3.extent(2); ++k) {
-            p2(i,j).A = A(i,j);
-            p2(i,j).B = B(i,j);
-            p2(i,j).lam1 = lam1(i,j);
-            p2(i,j).lam2 = lam2(i,j);
             p3(i,j,k).lam3 = lam3(i,j,k);
             //p3(i,j,k).c = c(i,j,k); // those are not kept there,
             //p3(i,j,k).d = d(i,j,k); // but only in derived form c², d²
@@ -165,6 +167,7 @@ class PairTersoff /*: public Pair*/ {
             p3(i,j,k).D = D(i,j,k);
             p3(i,j,k).R = R(i,j,k);
           }
+        }
     }
     Array2D<double> A, B;
     Array2D<double> lam1, lam2;

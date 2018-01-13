@@ -1,6 +1,6 @@
 # -*- conf -*-
 #
-# Copyright (c) 2012,2013,2014,2015,2017 Tobias Brink
+# Copyright (c) 2012,2013,2014,2015,2017,2018 Tobias Brink
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -21,7 +21,7 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-KIM_API_Version  := 1.6.0
+KIM_API_Version  := 1.9.0
 
 ## Units ###############################################################
 Unit_Handling    := flexible
