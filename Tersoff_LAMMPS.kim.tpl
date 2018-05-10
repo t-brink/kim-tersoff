@@ -59,7 +59,7 @@ SPECIES_016_NAME_STR        spec                   15
 CONVENTIONS:
 
 ZeroBasedLists              flag
-Neigh_IterAccess            flag
+#Neigh_IterAccess            flag
 Neigh_LocaAccess            flag
 NEIGH_RVEC_F                flag
 NEIGH_PURE_F                flag
@@ -96,8 +96,9 @@ cutoff               double    length    []
 energy               double    energy    []                    optional
 forces               double    force     [numberOfParticles,3] optional
 particleEnergy       double    energy    [numberOfParticles]   optional
-virial               double    energy    [6]                   optional
-particleVirial       double    energy    [numberOfParticles,6] optional
+#virial               double    energy    [6]                   optional
+#particleVirial       double    energy    [numberOfParticles,6] optional
+process_dEdr         method    none      []                    optional
 
 
 ## Parameters ##########################################################

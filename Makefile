@@ -29,4 +29,6 @@ LOCALOBJ = pair_tersoff.o model_driver_Tersoff.o
 
 LOCALCLEAN =
 
+#CXXFLAGS = -DDEBUG
+
 include $(KIM_DIR)/$(builddir)/Makefile.ModelDriver

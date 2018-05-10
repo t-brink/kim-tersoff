@@ -66,6 +66,7 @@ struct KimIndices {
   //int compute_forces; // was forces requested?
   int virial;
   int particleVirial;
+  int process_dEdr;
 
   // Non-index stuff.
   KIM_NBC nbc;
@@ -195,10 +196,10 @@ class PairTersoff /*: public Pair*/ {
               const KimIndices& ki
               );
   virtual ~PairTersoff();
-  void compute(KIM_API_model&, bool, bool, KIM_IterLoca,
+  void compute(KIM_API_model* const, bool, bool, KIM_IterLoca,
                int, const int*, const Array2D<double>&,
                double*, double*, double*, Array2D<double>*,
-               double*, Array2D<double>*) const;
+               double*, Array2D<double>*, bool compute_process_dEdr) const;
   void update_params(); // Copy from KIM-published parameters to internal.
   double cutoff() const {
     return max_cutoff;
@@ -231,12 +232,12 @@ class PairTersoff /*: public Pair*/ {
                     double, double,
                     const double[4],
                     double&, bool, double&) const;
-  void attractive(double, double, double,
+  void attractive(double,
                   double, double, int, double,
                   double, double, double, double,
                   double,
-                  double *, double *,
-                  double *, double *, double *) const;
+                  double, double, double,
+                  double &, double &, double &) const;
 
   double ters_fc(double, double, double) const;
   double ters_fc_d(double, double, double) const;
@@ -249,10 +250,10 @@ class PairTersoff /*: public Pair*/ {
                        double, double, int, double,
                        double, double, double,
                        double, double,
-                       double *, double, double *, double,
-                       double *, double *, double *) const;
-  void costheta_d(double *, double, double *, double,
-                  double *, double *, double *) const;
+                       double, double, double,
+                       double &, double &, double &) const;
+  void costheta_d(double, double , double,
+                  double &, double &, double &, double &) const;
 
   // inlined functions for efficiency
 

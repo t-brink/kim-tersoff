@@ -79,7 +79,7 @@ bool is_ghost(KIM_API_model& kim_model, int j, int mode) {
 
 /* ---------------------------------------------------------------------- */
 
-void PairTersoff::compute(KIM_API_model& kim_model,
+void PairTersoff::compute(KIM_API_model * const kim_model,
                           bool use_neighbor_list, // false -> cluster/MI_OPBC
                           bool use_distvec, // use rij array from neighbor list?
                           KIM_IterLoca access_mode,
@@ -90,7 +90,8 @@ void PairTersoff::compute(KIM_API_model& kim_model,
                           double* energy, double* atom_energy,
                           Array2D<double>* forces,
                           double* virial,
-                          Array2D<double>* particleVirial) const
+                          Array2D<double>* particleVirial,
+                          bool compute_process_dEdr) const
 {
   int ii;          // Iteration over all atoms.
   int error;       // KIM error code.
@@ -127,7 +128,7 @@ void PairTersoff::compute(KIM_API_model& kim_model,
   // In iterator mode: reset the iterator.
   if (use_neighbor_list && access_mode == KIM_ITERATOR_MODE) {
     error =
-      kim_model.get_neigh(access_mode,
+      kim_model->get_neigh(access_mode,
                           0, // reset iterator.
                           &ii, // not set when resetting
                           &n_neigh, // not set when resetting
@@ -135,7 +136,7 @@ void PairTersoff::compute(KIM_API_model& kim_model,
                           &distvec // not set when resetting
                           );
     if (error < KIM_STATUS_OK && error != KIM_STATUS_NEIGH_ITER_INIT_OK) {
-      kim_model.report_error(__LINE__, __FILE__,
+      kim_model->report_error(__LINE__, __FILE__,
                              "KIM_API_get_neigh (reset iterator)",
                              error);
       throw runtime_error("compute: Error in KIM_API_get_neigh");
@@ -148,6 +149,16 @@ void PairTersoff::compute(KIM_API_model& kim_model,
   const bool cannot_use_half_list = (!use_neighbor_list ||
                                      (access_mode != KIM_LOCATOR_MODE));
 
+#ifdef DEBUG
+  cout<<"@flag access_mode: "<< access_mode<<endl;
+  cout<<"@flag KIM_LOCATOR_MODE: "<< KIM_LOCATOR_MODE<<endl;
+  cout<<"@flag KIM_ITERATOR_MODE: "<< KIM_ITERATOR_MODE<<endl;
+  cout<<"@flag !use_neighbor_list: "<< !use_neighbor_list<<endl;
+  cout<<"@flag (access_mode != KIM_LOCATOR_MODE): "<< (access_mode != KIM_LOCATOR_MODE) <<endl;
+  cout<<"@flag cannot_use_half_list: "<< cannot_use_half_list<<endl;
+#endif
+
+
   // loop over full neighbor list of my atoms
 
   // ii will only be changed in locator mode, otherwise it stays zero
@@ -158,7 +169,7 @@ void PairTersoff::compute(KIM_API_model& kim_model,
     // Get neighbors.
     if (use_neighbor_list) {
       error =
-        kim_model.get_neigh(access_mode, // locator or iterator
+        kim_model->get_neigh(access_mode, // locator or iterator
                             // The central atom or command to get next
                             // atom in iterator mode.
                             (access_mode == KIM_LOCATOR_MODE
@@ -174,7 +185,7 @@ void PairTersoff::compute(KIM_API_model& kim_model,
           error == KIM_STATUS_NEIGH_ITER_PAST_END)
         break; // Loop breaking condition is that we used up all central atoms.
       if (error < KIM_STATUS_OK) {
-        kim_model.report_error(__LINE__, __FILE__, "KIM_API_get_neigh",
+        kim_model->report_error(__LINE__, __FILE__, "KIM_API_get_neigh",
                                error);
         throw runtime_error("compute: Error in KIM_API_get_neigh");
       }
@@ -224,7 +235,15 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       // two-body interactions, skip half of them unless j is a ghost
       // atom and only if using neighbor list with locator
       const bool j_ghost =
-        cannot_use_half_list ? true : is_ghost(kim_model, j, 1);
+        cannot_use_half_list ? true : is_ghost(*kim_model, j, 1);
+
+
+#ifdef DEBUG
+  cout<<"@flag is_ghost: "<< is_ghost(*kim_model, j, 1)<<endl;
+  cout<<"@flag cannot_use_half_list: "<< cannot_use_half_list<<endl;
+  cout<<"@flag j_ghost: "<< j_ghost<<endl;
+#endif
+
       if (j_ghost || (i < j)) {
         const double lam1 = params2(itype,jtype).lam1;
         const double A = params2(itype,jtype).A;
@@ -244,7 +263,8 @@ void PairTersoff::compute(KIM_API_model& kim_model,
             atom_energy[j] += 0.5 * evdwl;
         }
 
-        if (forces || virial || particleVirial) {
+        //if (forces || virial || particleVirial) {
+        if (forces || compute_process_dEdr) {
           const double fx = delr_ij[0]*fpair;
           const double fy = delr_ij[1]*fpair;
           const double fz = delr_ij[2]*fpair;
@@ -258,6 +278,23 @@ void PairTersoff::compute(KIM_API_model& kim_model,
             (*forces)(j,2) += half_prefactor*fz;
           }
 
+          if (compute_process_dEdr) {
+            double dEdr = -half_prefactor*fpair*r_ij;
+            double* pdelr_ij = delr_ij;
+            error = kim_model->process_dEdr(const_cast<KIM_API_model**>(&kim_model),
+                &dEdr, const_cast<double*> (&r_ij), &pdelr_ij, &i, &j);
+            if (error < KIM_STATUS_OK) {
+              kim_model->report_error(__LINE__, __FILE__, "KIM_API_process_dEdr",
+                  error);
+              throw runtime_error("compute: Error in KIM_API_process_dEdr");
+            }
+          }
+
+
+//@COMMENT `newton` required to be on for pair_tersoff, so the vatom in the
+//following segment is a bit problemtic
+
+/*
           if (virial || particleVirial) {
             const double vxx = delr_ij[0] * fx;
             const double vyy = delr_ij[1] * fy;
@@ -282,6 +319,7 @@ void PairTersoff::compute(KIM_API_model& kim_model,
               (*particleVirial)(i,3) -= 0.5 * vyz;
               (*particleVirial)(i,4) -= 0.5 * vxz;
               (*particleVirial)(i,5) -= 0.5 * vxy;
+
               if (!j_ghost) {
                 (*particleVirial)(j,0) -= 0.5 * vxx;
                 (*particleVirial)(j,1) -= 0.5 * vyy;
@@ -292,6 +330,8 @@ void PairTersoff::compute(KIM_API_model& kim_model,
               }
             }
           }
+*/
+
         }
       }
 
@@ -369,7 +409,9 @@ void PairTersoff::compute(KIM_API_model& kim_model,
         atom_energy[j] += en;
       }
 
-      if (forces || virial || particleVirial) {
+
+      //if (forces || virial || particleVirial) {
+      if (forces || compute_process_dEdr) {
         const double fx = delr_ij[0]*fzeta;
         const double fy = delr_ij[1]*fzeta;
         const double fz = delr_ij[2]*fzeta;
@@ -383,6 +425,19 @@ void PairTersoff::compute(KIM_API_model& kim_model,
           (*forces)(j,2) -= fz;
         }
 
+        if (compute_process_dEdr) {
+          double dEdr = fzeta*r_ij;
+          double* pdelr_ij = delr_ij;
+          error = kim_model->process_dEdr(const_cast<KIM_API_model**>(&kim_model),
+              &dEdr, const_cast<double*> (&r_ij), &pdelr_ij, &i, &j);
+          if (error < KIM_STATUS_OK) {
+            kim_model->report_error(__LINE__, __FILE__, "KIM_API_process_dEdr",
+                error);
+            throw runtime_error("compute: Error in KIM_API_process_dEdr");
+          }
+        }
+
+/*
         if (virial || particleVirial) {
           const double vxx = delr_ij[0] * fx;
           const double vyy = delr_ij[1] * fy;
@@ -423,11 +478,14 @@ void PairTersoff::compute(KIM_API_model& kim_model,
             (*particleVirial)(j,5) += vxy2;
           }
         }
+*/
       }
+
 
       // attractive term via loop over k
 
-      if (forces || virial || particleVirial) {
+      //if (forces || virial || particleVirial) {
+      if (forces || compute_process_dEdr) {
         for (int kk = 0; kk != n_neigh; ++kk) {
           if (jj == kk) continue;
           int k = use_neighbor_list ? neighbors[kk] : kk;
@@ -459,6 +517,16 @@ void PairTersoff::compute(KIM_API_model& kim_model,
 
           const double r_ik = sqrt(rsq_ik);
 
+          // r_jk
+          double delr_jk[3];
+          delr_jk[0] = delr_ik[0] - delr_ij[0];
+          delr_jk[1] = delr_ik[1] - delr_ij[1];
+          delr_jk[2] = delr_ik[2] - delr_ij[2];
+          const double rsq_jk = delr_jk[0]*delr_jk[0]
+                              + delr_jk[1]*delr_jk[1]
+                              + delr_jk[2]*delr_jk[2];
+          const double r_jk = sqrt(rsq_jk);
+
           const double R = params3(itype,jtype,ktype).R;
           const double D = params3(itype,jtype,ktype).D;
           const int m = params3(itype,jtype,ktype).m;
@@ -469,12 +537,57 @@ void PairTersoff::compute(KIM_API_model& kim_model,
           const double d2 = params3(itype,jtype,ktype).d2;
           const double c2_d2 = params3(itype,jtype,ktype).c2_d2;
 
-          double fi[3], fj[3], fk[3];
-
-          attractive(prefactor, r_ij, r_ik,
+          // dEdr_ij not normalized by r_ij, same for dEdr_ik and dEdr_jk
+          // note prefactor = -0.5 * fa * ∇bij, as defined above
+          double dEdr_ij, dEdr_ik, dEdr_jk;
+          attractive(-prefactor,
                      R, D, m, lam3, gamma, c2, d2, c2_d2, h,
-                     delr_ij, delr_ik, fi, fj, fk);
+                     r_ij, r_ik, r_jk,
+                     dEdr_ij, dEdr_ik, dEdr_jk);
 
+         if (forces) {
+            for (int dim = 0; dim < 3; ++dim) {
+              double pair_ij = dEdr_ij*delr_ij[dim]/r_ij;
+              double pair_ik = dEdr_ik*delr_ik[dim]/r_ik;
+              double pair_jk = dEdr_jk*delr_jk[dim]/r_jk;
+              (*forces)(i,dim) += pair_ij + pair_ik;
+              (*forces)(j,dim) += -pair_ij + pair_jk;
+              (*forces)(k,dim) += -pair_ik - pair_jk;
+            }
+          }
+
+          if (compute_process_dEdr) {
+            double* pdelr_ij = delr_ij;
+            double* pdelr_ik = delr_ik;
+            double* pdelr_jk = delr_jk;
+
+            error = kim_model->process_dEdr(const_cast<KIM_API_model**>(&kim_model),
+                &dEdr_ij, const_cast<double*> (&r_ij), &pdelr_ij, &i, &j);
+            if (error < KIM_STATUS_OK) {
+              kim_model->report_error(__LINE__, __FILE__, "KIM_API_process_dEdr",
+                  error);
+              throw runtime_error("compute: Error in KIM_API_process_dEdr");
+            }
+
+            error = kim_model->process_dEdr(const_cast<KIM_API_model**>(&kim_model),
+                &dEdr_ik, const_cast<double*> (&r_ik), &pdelr_ik, &i, &k);
+            if (error < KIM_STATUS_OK) {
+              kim_model->report_error(__LINE__, __FILE__, "KIM_API_process_dEdr",
+                  error);
+              throw runtime_error("compute: Error in KIM_API_process_dEdr");
+            }
+
+            error = kim_model->process_dEdr(const_cast<KIM_API_model**>(&kim_model),
+                &dEdr_jk, const_cast<double*> (&r_jk), &pdelr_jk, &j, &k);
+            if (error < KIM_STATUS_OK) {
+              kim_model->report_error(__LINE__, __FILE__, "KIM_API_process_dEdr",
+                  error);
+              throw runtime_error("compute: Error in KIM_API_process_dEdr");
+            }
+          }
+
+
+/*
           if (forces) {
             (*forces)(i,0) += fi[0];
             (*forces)(i,1) += fi[1];
@@ -534,6 +647,8 @@ void PairTersoff::compute(KIM_API_model& kim_model,
               (*particleVirial)(k,5) -= vxy3;
             }
           }
+*/
+
         }
       }
     }
@@ -815,22 +930,16 @@ double PairTersoff::force_zeta(double r, double fc, double fc_d, double zeta_ij,
 ------------------------------------------------------------------------- */
 
 void PairTersoff::attractive(double prefactor,
-                             double rij, double rik,
                              double R, double D, int m, double lam3,
                              double gamma, double c2, double d2, double c2_d2,
                              double h,
-                             double *delrij, double *delrik,
-                             double *fi, double *fj, double *fk) const
+                             double rij, double rik, double rjk,
+                             double &drij, double &drik, double &drjk) const
 {
-  double rij_hat[3];
-  vec3_scale(1.0/rij, delrij, rij_hat); // rij_hat = delrij / rij
-
-  double rik_hat[3];
-  vec3_scale(1.0/rik, delrik, rik_hat); // rik_hat = delrik / rik
 
   ters_zetaterm_d(prefactor,
                   R, D, m, lam3, gamma, c2, d2, c2_d2, h,
-                  rij_hat,rij,rik_hat,rik,fi,fj,fk);
+                  rij,rik,rjk,drij,drik,drjk);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -905,15 +1014,14 @@ void PairTersoff::ters_zetaterm_d(double prefactor,
                                   double R, double D, int m, double lam3,
                                   double gamma, double c2, double d2,
                                   double c2_d2, double h,
-                                  double *rij_hat, double rij,
-                                  double *rik_hat, double rik,
-                                  double *dri, double *drj, double *drk) const
+                                  double rij, double rik, double rjk,
+                                  double &drij, double &drik, double &drjk) const
 {
-  double ex_delr,ex_delr_d,tmp;
-  double dcosdri[3],dcosdrj[3],dcosdrk[3];
 
   const double fc = ters_fc(rik,R,D);
   const double dfc = ters_fc_d(rik,R,D);
+
+  double ex_delr,ex_delr_d,tmp;
   if (m == 3) tmp = pow(lam3 * (rij-rik), 3);
   else tmp = lam3 * (rij-rik); // m == 1
 
@@ -925,11 +1033,20 @@ void PairTersoff::ters_zetaterm_d(double prefactor,
     ex_delr_d = 3.0*pow(lam3, 3) * pow(rij-rik, 2)*ex_delr;
   else ex_delr_d = lam3 * ex_delr; // m == 1
 
-  const double cos_theta = vec3_dot(rij_hat,rik_hat);
+  double cos_theta, dcosdrij,dcosdrik,dcosdrjk;
+  costheta_d(rij,rik,rjk, cos_theta, dcosdrij, dcosdrik, dcosdrjk);
+
   const double gijk = ters_gijk(cos_theta, gamma, c2, d2, c2_d2, h);
   const double gijk_d = ters_gijk_d(cos_theta, gamma, c2, d2, h);
-  costheta_d(rij_hat,rij,rik_hat,rik,dcosdri,dcosdrj,dcosdrk);
 
+
+  // compute the derivative wrt rij, rik, rjk
+  drij = (fc*gijk_d*ex_delr*dcosdrij + fc*gijk*ex_delr_d) * prefactor;
+  drik = (dfc*gijk*ex_delr + fc*gijk_d*ex_delr*dcosdrik - fc*gijk*ex_delr_d) * prefactor;
+  drjk = (fc*gijk_d*ex_delr*dcosdrjk) * prefactor;
+
+
+/*
   // compute the derivative wrt Ri
   // dri = -dfc*gijk*ex_delr*rik_hat;
   // dri += fc*gijk_d*ex_delr*dcosdri;
@@ -958,22 +1075,25 @@ void PairTersoff::ters_zetaterm_d(double prefactor,
   vec3_scaleadd(fc*gijk_d*ex_delr,dcosdrk,drk,drk);
   vec3_scaleadd(-fc*gijk*ex_delr_d,rik_hat,drk,drk);
   vec3_scale(prefactor,drk,drk);
+*/
+
+
 }
 
 /* ---------------------------------------------------------------------- */
 
-void PairTersoff::costheta_d(double *rij_hat, double rij,
-                             double *rik_hat, double rik,
-                             double *dri, double *drj, double *drk) const
+void PairTersoff::costheta_d(double rij, double rik, double rjk, double &cos_ijk,
+                             double &drij, double &drik, double &drjk) const
 {
-  // first element is devative wrt Ri, second wrt Rj, third wrt Rk
+  const double rijsq = rij*rij;
+  const double riksq = rik*rik;
+  const double rjksq = rjk*rjk;
 
-  const double cos_theta = vec3_dot(rij_hat,rik_hat);
-
-  vec3_scaleadd(-cos_theta,rij_hat,rik_hat,drj);
-  vec3_scale(1.0/rij,drj,drj);
-  vec3_scaleadd(-cos_theta,rik_hat,rij_hat,drk);
-  vec3_scale(1.0/rik,drk,drk);
-  vec3_add(drj,drk,dri);
-  vec3_scale(-1.0,dri,dri);
+  // cos_ijk, (i is the apex atom)
+  cos_ijk = (rijsq + riksq - rjksq)/(2*rij*rik);
+  // dcos_ijk/drij, dcos_ijk/drik, dcos_ijk/drjk
+  drij = (rijsq - riksq + rjksq)/(2*rijsq*rik);
+  drik = (riksq - rijsq + rjksq)/(2*rij*riksq);
+  drjk = -rjk/(rij*rik);
 }
+
