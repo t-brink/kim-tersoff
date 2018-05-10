@@ -64,8 +64,6 @@ struct KimIndices {
   //int compute_particleEnergy; // was particleEnergy requested?
   int forces;
   //int compute_forces; // was forces requested?
-  int virial;
-  int particleVirial;
   int process_dEdr;
 
   // Non-index stuff.
@@ -199,7 +197,7 @@ class PairTersoff /*: public Pair*/ {
   void compute(KIM_API_model* const, bool, bool, KIM_IterLoca,
                int, const int*, const Array2D<double>&,
                double*, double*, double*, Array2D<double>*,
-               double*, Array2D<double>*, bool compute_process_dEdr) const;
+               bool) const;
   void update_params(); // Copy from KIM-published parameters to internal.
   double cutoff() const {
     return max_cutoff;

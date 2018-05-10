@@ -89,8 +89,6 @@ void PairTersoff::compute(KIM_API_model * const kim_model,
                           double* boxSideLengths, // If != NULL -> MI_OPBC.
                           double* energy, double* atom_energy,
                           Array2D<double>* forces,
-                          double* virial,
-                          Array2D<double>* particleVirial,
                           bool compute_process_dEdr) const
 {
   int ii;          // Iteration over all atoms.
@@ -116,14 +114,6 @@ void PairTersoff::compute(KIM_API_model * const kim_model,
       (*forces)(i, 2) = 0.0;
     }
 
-  // Reset virial.
-  if (virial)
-    for (int i = 0; i != 6; ++i)
-      virial[i] = 0.0;
-  if (particleVirial)
-    for (int i = 0; i != n_atoms; ++i)
-      for (int j = 0; j != 6; ++j)
-        (*particleVirial)(i, j) = 0.0;
 
   // In iterator mode: reset the iterator.
   if (use_neighbor_list && access_mode == KIM_ITERATOR_MODE) {
@@ -148,16 +138,6 @@ void PairTersoff::compute(KIM_API_model * const kim_model,
 
   const bool cannot_use_half_list = (!use_neighbor_list ||
                                      (access_mode != KIM_LOCATOR_MODE));
-
-#ifdef DEBUG
-  cout<<"@flag access_mode: "<< access_mode<<endl;
-  cout<<"@flag KIM_LOCATOR_MODE: "<< KIM_LOCATOR_MODE<<endl;
-  cout<<"@flag KIM_ITERATOR_MODE: "<< KIM_ITERATOR_MODE<<endl;
-  cout<<"@flag !use_neighbor_list: "<< !use_neighbor_list<<endl;
-  cout<<"@flag (access_mode != KIM_LOCATOR_MODE): "<< (access_mode != KIM_LOCATOR_MODE) <<endl;
-  cout<<"@flag cannot_use_half_list: "<< cannot_use_half_list<<endl;
-#endif
-
 
   // loop over full neighbor list of my atoms
 
@@ -236,14 +216,6 @@ void PairTersoff::compute(KIM_API_model * const kim_model,
       // atom and only if using neighbor list with locator
       const bool j_ghost =
         cannot_use_half_list ? true : is_ghost(*kim_model, j, 1);
-
-
-#ifdef DEBUG
-  cout<<"@flag is_ghost: "<< is_ghost(*kim_model, j, 1)<<endl;
-  cout<<"@flag cannot_use_half_list: "<< cannot_use_half_list<<endl;
-  cout<<"@flag j_ghost: "<< j_ghost<<endl;
-#endif
-
       if (j_ghost || (i < j)) {
         const double lam1 = params2(itype,jtype).lam1;
         const double A = params2(itype,jtype).A;
@@ -263,7 +235,6 @@ void PairTersoff::compute(KIM_API_model * const kim_model,
             atom_energy[j] += 0.5 * evdwl;
         }
 
-        //if (forces || virial || particleVirial) {
         if (forces || compute_process_dEdr) {
           const double fx = delr_ij[0]*fpair;
           const double fy = delr_ij[1]*fpair;
@@ -289,48 +260,6 @@ void PairTersoff::compute(KIM_API_model * const kim_model,
               throw runtime_error("compute: Error in KIM_API_process_dEdr");
             }
           }
-
-
-//@COMMENT `newton` required to be on for pair_tersoff, so the vatom in the
-//following segment is a bit problemtic
-
-/*
-          if (virial || particleVirial) {
-            const double vxx = delr_ij[0] * fx;
-            const double vyy = delr_ij[1] * fy;
-            const double vzz = delr_ij[2] * fz;
-            const double vyz = delr_ij[1] * fz;
-            const double vxz = delr_ij[0] * fz;
-            const double vxy = delr_ij[0] * fy;
-
-            if (virial) {
-              virial[0] -= half_prefactor * vxx;
-              virial[1] -= half_prefactor * vyy;
-              virial[2] -= half_prefactor * vzz;
-              virial[3] -= half_prefactor * vyz;
-              virial[4] -= half_prefactor * vxz;
-              virial[5] -= half_prefactor * vxy;
-            }
-
-            if (particleVirial) {
-              (*particleVirial)(i,0) -= 0.5 * vxx;
-              (*particleVirial)(i,1) -= 0.5 * vyy;
-              (*particleVirial)(i,2) -= 0.5 * vzz;
-              (*particleVirial)(i,3) -= 0.5 * vyz;
-              (*particleVirial)(i,4) -= 0.5 * vxz;
-              (*particleVirial)(i,5) -= 0.5 * vxy;
-
-              if (!j_ghost) {
-                (*particleVirial)(j,0) -= 0.5 * vxx;
-                (*particleVirial)(j,1) -= 0.5 * vyy;
-                (*particleVirial)(j,2) -= 0.5 * vzz;
-                (*particleVirial)(j,3) -= 0.5 * vyz;
-                (*particleVirial)(j,4) -= 0.5 * vxz;
-                (*particleVirial)(j,5) -= 0.5 * vxy;
-              }
-            }
-          }
-*/
 
         }
       }
@@ -409,8 +338,6 @@ void PairTersoff::compute(KIM_API_model * const kim_model,
         atom_energy[j] += en;
       }
 
-
-      //if (forces || virial || particleVirial) {
       if (forces || compute_process_dEdr) {
         const double fx = delr_ij[0]*fzeta;
         const double fy = delr_ij[1]*fzeta;
@@ -436,55 +363,11 @@ void PairTersoff::compute(KIM_API_model * const kim_model,
             throw runtime_error("compute: Error in KIM_API_process_dEdr");
           }
         }
-
-/*
-        if (virial || particleVirial) {
-          const double vxx = delr_ij[0] * fx;
-          const double vyy = delr_ij[1] * fy;
-          const double vzz = delr_ij[2] * fz;
-          const double vyz = delr_ij[1] * fz; // yz
-          const double vxz = delr_ij[0] * fz; // xz
-          const double vxy = delr_ij[0] * fy; // xy
-
-          if (virial) {
-            virial[0] += vxx;
-            virial[1] += vyy;
-            virial[2] += vzz;
-            virial[3] += vyz;
-            virial[4] += vxz;
-            virial[5] += vxy;
-          }
-
-          if (particleVirial) {
-            const double vxx2 = 0.5 * vxx;
-            const double vyy2 = 0.5 * vyy;
-            const double vzz2 = 0.5 * vzz;
-            const double vyz2 = 0.5 * vyz;
-            const double vxz2 = 0.5 * vxz;
-            const double vxy2 = 0.5 * vxy;
-
-            (*particleVirial)(i,0) += vxx2;
-            (*particleVirial)(i,1) += vyy2;
-            (*particleVirial)(i,2) += vzz2;
-            (*particleVirial)(i,3) += vyz2;
-            (*particleVirial)(i,4) += vxz2;
-            (*particleVirial)(i,5) += vxy2;
-
-            (*particleVirial)(j,0) += vxx2;
-            (*particleVirial)(j,1) += vyy2;
-            (*particleVirial)(j,2) += vzz2;
-            (*particleVirial)(j,3) += vyz2;
-            (*particleVirial)(j,4) += vxz2;
-            (*particleVirial)(j,5) += vxy2;
-          }
-        }
-*/
       }
 
 
       // attractive term via loop over k
 
-      //if (forces || virial || particleVirial) {
       if (forces || compute_process_dEdr) {
         for (int kk = 0; kk != n_neigh; ++kk) {
           if (jj == kk) continue;
@@ -585,69 +468,6 @@ void PairTersoff::compute(KIM_API_model * const kim_model,
               throw runtime_error("compute: Error in KIM_API_process_dEdr");
             }
           }
-
-
-/*
-          if (forces) {
-            (*forces)(i,0) += fi[0];
-            (*forces)(i,1) += fi[1];
-            (*forces)(i,2) += fi[2];
-            (*forces)(j,0) += fj[0];
-            (*forces)(j,1) += fj[1];
-            (*forces)(j,2) += fj[2];
-            (*forces)(k,0) += fk[0];
-            (*forces)(k,1) += fk[1];
-            (*forces)(k,2) += fk[2];
-          }
-
-          if (virial || particleVirial) {
-            const double vxx = delr_ij[0]*fj[0] + delr_ik[0]*fk[0];
-            const double vyy = delr_ij[1]*fj[1] + delr_ik[1]*fk[1];
-            const double vzz = delr_ij[2]*fj[2] + delr_ik[2]*fk[2];
-            const double vyz = delr_ij[1]*fj[2] + delr_ik[1]*fk[2];
-            const double vxz = delr_ij[0]*fj[2] + delr_ik[0]*fk[2];
-            const double vxy = delr_ij[0]*fj[1] + delr_ik[0]*fk[1];
-
-            if (virial) {
-              virial[0] -= vxx;
-              virial[1] -= vyy;
-              virial[2] -= vzz;
-              virial[3] -= vyz;
-              virial[4] -= vxz;
-              virial[5] -= vxy;
-            }
-
-            if (particleVirial) {
-              const double vxx3 = 1.0/3.0 * vxx;
-              const double vyy3 = 1.0/3.0 * vyy;
-              const double vzz3 = 1.0/3.0 * vzz;
-              const double vyz3 = 1.0/3.0 * vyz;
-              const double vxz3 = 1.0/3.0 * vxz;
-              const double vxy3 = 1.0/3.0 * vxy;
-
-              (*particleVirial)(i,0) -= vxx3;
-              (*particleVirial)(i,1) -= vyy3;
-              (*particleVirial)(i,2) -= vzz3;
-              (*particleVirial)(i,3) -= vyz3;
-              (*particleVirial)(i,4) -= vxz3;
-              (*particleVirial)(i,5) -= vxy3;
-
-              (*particleVirial)(j,0) -= vxx3;
-              (*particleVirial)(j,1) -= vyy3;
-              (*particleVirial)(j,2) -= vzz3;
-              (*particleVirial)(j,3) -= vyz3;
-              (*particleVirial)(j,4) -= vxz3;
-              (*particleVirial)(j,5) -= vxy3;
-
-              (*particleVirial)(k,0) -= vxx3;
-              (*particleVirial)(k,1) -= vyy3;
-              (*particleVirial)(k,2) -= vzz3;
-              (*particleVirial)(k,3) -= vyz3;
-              (*particleVirial)(k,4) -= vxz3;
-              (*particleVirial)(k,5) -= vxy3;
-            }
-          }
-*/
 
         }
       }
@@ -1044,39 +864,6 @@ void PairTersoff::ters_zetaterm_d(double prefactor,
   drij = (fc*gijk_d*ex_delr*dcosdrij + fc*gijk*ex_delr_d) * prefactor;
   drik = (dfc*gijk*ex_delr + fc*gijk_d*ex_delr*dcosdrik - fc*gijk*ex_delr_d) * prefactor;
   drjk = (fc*gijk_d*ex_delr*dcosdrjk) * prefactor;
-
-
-/*
-  // compute the derivative wrt Ri
-  // dri = -dfc*gijk*ex_delr*rik_hat;
-  // dri += fc*gijk_d*ex_delr*dcosdri;
-  // dri += fc*gijk*ex_delr_d*(rik_hat - rij_hat);
-
-  vec3_scale(-dfc*gijk*ex_delr,rik_hat,dri);
-  vec3_scaleadd(fc*gijk_d*ex_delr,dcosdri,dri,dri);
-  vec3_scaleadd(fc*gijk*ex_delr_d,rik_hat,dri,dri);
-  vec3_scaleadd(-fc*gijk*ex_delr_d,rij_hat,dri,dri);
-  vec3_scale(prefactor,dri,dri);
-
-  // compute the derivative wrt Rj
-  // drj = fc*gijk_d*ex_delr*dcosdrj;
-  // drj += fc*gijk*ex_delr_d*rij_hat;
-
-  vec3_scale(fc*gijk_d*ex_delr,dcosdrj,drj);
-  vec3_scaleadd(fc*gijk*ex_delr_d,rij_hat,drj,drj);
-  vec3_scale(prefactor,drj,drj);
-
-  // compute the derivative wrt Rk
-  // drk = dfc*gijk*ex_delr*rik_hat;
-  // drk += fc*gijk_d*ex_delr*dcosdrk;
-  // drk += -fc*gijk*ex_delr_d*rik_hat;
-
-  vec3_scale(dfc*gijk*ex_delr,rik_hat,drk);
-  vec3_scaleadd(fc*gijk_d*ex_delr,dcosdrk,drk,drk);
-  vec3_scaleadd(-fc*gijk*ex_delr_d,rik_hat,drk,drk);
-  vec3_scale(prefactor,drk,drk);
-*/
-
 
 }
 
