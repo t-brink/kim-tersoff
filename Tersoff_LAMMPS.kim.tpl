@@ -82,6 +82,7 @@ coordinates          double    length    [numberOfParticles,3]
 get_neigh            method    none      []                    optional
 neighObject          pointer   none      []                    optional
 boxSideLengths       double    length    [3]                   optional
+process_dEdr         method    none      []                    optional
 # This one is unused in the model.
 numberContributingParticles integer none []                    optional
 
@@ -98,7 +99,6 @@ forces               double    force     [numberOfParticles,3] optional
 particleEnergy       double    energy    [numberOfParticles]   optional
 #virial               double    energy    [6]                   optional
 #particleVirial       double    energy    [numberOfParticles,6] optional
-process_dEdr         method    none      []                    optional
 
 
 ## Parameters ##########################################################
