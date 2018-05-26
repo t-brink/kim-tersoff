@@ -193,7 +193,7 @@ static int compute(KIM_API_model** kimmdl) {
                              KIM_STATUS_FAIL);
       return KIM_STATUS_FAIL;
     }
-    tersoff->compute(&kim_model, use_neighbor_list, use_distvec,
+    tersoff->compute(kim_model, use_neighbor_list, use_distvec,
                      ki.neigh_access_mode,
                      *n_atoms, atom_types, coord, boxSideLengths,
                      energy, particle_energy, forces_ptr,

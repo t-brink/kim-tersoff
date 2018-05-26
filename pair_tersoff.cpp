@@ -79,7 +79,7 @@ bool is_ghost(KIM_API_model& kim_model, int j, int mode) {
 
 /* ---------------------------------------------------------------------- */
 
-void PairTersoff::compute(KIM_API_model * const kim_model,
+void PairTersoff::compute(KIM_API_model& kim_model,
                           bool use_neighbor_list, // false -> cluster/MI_OPBC
                           bool use_distvec, // use rij array from neighbor list?
                           KIM_IterLoca access_mode,
@@ -118,7 +118,7 @@ void PairTersoff::compute(KIM_API_model * const kim_model,
   // In iterator mode: reset the iterator.
   if (use_neighbor_list && access_mode == KIM_ITERATOR_MODE) {
     error =
-      kim_model->get_neigh(access_mode,
+      kim_model.get_neigh(access_mode,
                           0, // reset iterator.
                           &ii, // not set when resetting
                           &n_neigh, // not set when resetting
@@ -126,7 +126,7 @@ void PairTersoff::compute(KIM_API_model * const kim_model,
                           &distvec // not set when resetting
                           );
     if (error < KIM_STATUS_OK && error != KIM_STATUS_NEIGH_ITER_INIT_OK) {
-      kim_model->report_error(__LINE__, __FILE__,
+      kim_model.report_error(__LINE__, __FILE__,
                              "KIM_API_get_neigh (reset iterator)",
                              error);
       throw runtime_error("compute: Error in KIM_API_get_neigh");
@@ -149,7 +149,7 @@ void PairTersoff::compute(KIM_API_model * const kim_model,
     // Get neighbors.
     if (use_neighbor_list) {
       error =
-        kim_model->get_neigh(access_mode, // locator or iterator
+        kim_model.get_neigh(access_mode, // locator or iterator
                             // The central atom or command to get next
                             // atom in iterator mode.
                             (access_mode == KIM_LOCATOR_MODE
@@ -165,7 +165,7 @@ void PairTersoff::compute(KIM_API_model * const kim_model,
           error == KIM_STATUS_NEIGH_ITER_PAST_END)
         break; // Loop breaking condition is that we used up all central atoms.
       if (error < KIM_STATUS_OK) {
-        kim_model->report_error(__LINE__, __FILE__, "KIM_API_get_neigh",
+        kim_model.report_error(__LINE__, __FILE__, "KIM_API_get_neigh",
                                error);
         throw runtime_error("compute: Error in KIM_API_get_neigh");
       }
@@ -215,7 +215,7 @@ void PairTersoff::compute(KIM_API_model * const kim_model,
       // two-body interactions, skip half of them unless j is a ghost
       // atom and only if using neighbor list with locator
       const bool j_ghost =
-        cannot_use_half_list ? true : is_ghost(*kim_model, j, 1);
+        cannot_use_half_list ? true : is_ghost(kim_model, j, 1);
       if (j_ghost || (i < j)) {
         const double lam1 = params2(itype,jtype).lam1;
         const double A = params2(itype,jtype).A;
@@ -250,17 +250,11 @@ void PairTersoff::compute(KIM_API_model * const kim_model,
           }
 
           if (compute_process_dEdr) {
-            double dEdr = -half_prefactor*fpair*r_ij;
-            double* pdelr_ij = delr_ij;
-            error = kim_model->process_dEdr(const_cast<KIM_API_model**>(&kim_model),
-                &dEdr, const_cast<double*> (&r_ij), &pdelr_ij, &i, &j);
-            if (error < KIM_STATUS_OK) {
-              kim_model->report_error(__LINE__, __FILE__, "KIM_API_process_dEdr",
-                  error);
-              throw runtime_error("compute: Error in KIM_API_process_dEdr");
-            }
+            run_process_dEdr(&kim_model,
+                             -half_prefactor*fpair*r_ij, // dEdr
+                             r_ij, delr_ij, i, j,
+                             __LINE__, __FILE__);
           }
-
         }
       }
 
@@ -353,15 +347,10 @@ void PairTersoff::compute(KIM_API_model * const kim_model,
         }
 
         if (compute_process_dEdr) {
-          double dEdr = fzeta*r_ij;
-          double* pdelr_ij = delr_ij;
-          error = kim_model->process_dEdr(const_cast<KIM_API_model**>(&kim_model),
-              &dEdr, const_cast<double*> (&r_ij), &pdelr_ij, &i, &j);
-          if (error < KIM_STATUS_OK) {
-            kim_model->report_error(__LINE__, __FILE__, "KIM_API_process_dEdr",
-                error);
-            throw runtime_error("compute: Error in KIM_API_process_dEdr");
-          }
+          run_process_dEdr(&kim_model,
+                           fzeta*r_ij, // dEdr
+                           r_ij, delr_ij, i, j,
+                           __LINE__, __FILE__);
         }
       }
 
@@ -428,47 +417,25 @@ void PairTersoff::compute(KIM_API_model * const kim_model,
                      r_ij, r_ik, r_jk,
                      dEdr_ij, dEdr_ik, dEdr_jk);
 
-         if (forces) {
+          if (forces) {
             for (int dim = 0; dim < 3; ++dim) {
-              double pair_ij = dEdr_ij*delr_ij[dim]/r_ij;
-              double pair_ik = dEdr_ik*delr_ik[dim]/r_ik;
-              double pair_jk = dEdr_jk*delr_jk[dim]/r_jk;
-              (*forces)(i,dim) += pair_ij + pair_ik;
+              const double pair_ij = dEdr_ij*delr_ij[dim]/r_ij;
+              const double pair_ik = dEdr_ik*delr_ik[dim]/r_ik;
+              const double pair_jk = dEdr_jk*delr_jk[dim]/r_jk;
+              (*forces)(i,dim) +=  pair_ij + pair_ik;
               (*forces)(j,dim) += -pair_ij + pair_jk;
               (*forces)(k,dim) += -pair_ik - pair_jk;
             }
           }
 
           if (compute_process_dEdr) {
-            double* pdelr_ij = delr_ij;
-            double* pdelr_ik = delr_ik;
-            double* pdelr_jk = delr_jk;
-
-            error = kim_model->process_dEdr(const_cast<KIM_API_model**>(&kim_model),
-                &dEdr_ij, const_cast<double*> (&r_ij), &pdelr_ij, &i, &j);
-            if (error < KIM_STATUS_OK) {
-              kim_model->report_error(__LINE__, __FILE__, "KIM_API_process_dEdr",
-                  error);
-              throw runtime_error("compute: Error in KIM_API_process_dEdr");
-            }
-
-            error = kim_model->process_dEdr(const_cast<KIM_API_model**>(&kim_model),
-                &dEdr_ik, const_cast<double*> (&r_ik), &pdelr_ik, &i, &k);
-            if (error < KIM_STATUS_OK) {
-              kim_model->report_error(__LINE__, __FILE__, "KIM_API_process_dEdr",
-                  error);
-              throw runtime_error("compute: Error in KIM_API_process_dEdr");
-            }
-
-            error = kim_model->process_dEdr(const_cast<KIM_API_model**>(&kim_model),
-                &dEdr_jk, const_cast<double*> (&r_jk), &pdelr_jk, &j, &k);
-            if (error < KIM_STATUS_OK) {
-              kim_model->report_error(__LINE__, __FILE__, "KIM_API_process_dEdr",
-                  error);
-              throw runtime_error("compute: Error in KIM_API_process_dEdr");
-            }
+            run_process_dEdr(&kim_model, dEdr_ij, r_ij, delr_ij, i, j,
+                             __LINE__, __FILE__);
+            run_process_dEdr(&kim_model, dEdr_ik, r_ik, delr_ik, i, k,
+                             __LINE__, __FILE__);
+            run_process_dEdr(&kim_model, dEdr_jk, r_jk, delr_jk, j, k,
+                             __LINE__, __FILE__);
           }
-
         }
       }
     }

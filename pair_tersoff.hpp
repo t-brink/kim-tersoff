@@ -24,6 +24,7 @@
 #include <istream>
 
 #include <KIM_API.h>
+#include <KIM_API_status.h>
 
 #include "ndarray.hpp"
 
@@ -194,7 +195,7 @@ class PairTersoff /*: public Pair*/ {
               const KimIndices& ki
               );
   virtual ~PairTersoff();
-  void compute(KIM_API_model* const, bool, bool, KIM_IterLoca,
+  void compute(KIM_API_model&, bool, bool, KIM_IterLoca,
                int, const int*, const Array2D<double>&,
                double*, double*, double*, Array2D<double>*,
                bool) const;
@@ -290,6 +291,19 @@ class PairTersoff /*: public Pair*/ {
     z[0] = k*x[0]+y[0];
     z[1] = k*x[1]+y[1];
     z[2] = k*x[2]+y[2];
+  }
+
+  inline void run_process_dEdr(KIM_API_model* kim_model_ptr,
+                               double dEdr, double r,
+                               double* dr, int i, int j,
+                               int line, const char* file) const {
+    // This function serves mostly to hide the warts of the KIM API.
+    int error = kim_model_ptr->process_dEdr(&kim_model_ptr, &dEdr, &r,
+                                            &dr, &i, &j);
+    if (error < KIM_STATUS_OK) {
+      kim_model_ptr->report_error(line, file, "KIM_API_process_dEdr", error);
+      throw std::runtime_error("compute: Error in KIM_API_process_dEdr");
+    }
   }
 };
 
