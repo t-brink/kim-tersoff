@@ -1,46 +1,21 @@
-* optimize
+* port to KIM 2.0
 
-** parts of force calculation are still done even if not needed
+* implement ZBL. But how?
 
-** it is currently half to a third the performance compared with native
-   tersoff for serial
+   * subclass of PairTersoff (as LAMMPS does)
 
-   it seems to scale better and mpi with enough cores can beat native on my
-   i7-3770 PC at home
+   * somehow examine the parameter file to see if ZBL is wanted
 
-*** check optimization options first! maybe KIM is more conservative than
-    LAMMPS in its Makefile (seems both have -O3, though, as far as I can see)
+   * produce the correct class in the init routine
 
-*** then ask on mailing list if this slowdown is expected
+   * then, make a template out of the "destroy", "reinit", and
+     "compute" functions; the template parameter is the class
+     PairTersoff or PairTersoffZBL
 
-*** only then start seriously wondering about own code!
+   * make real, static functions that just call the correct template
+     and pass those to KIM (again the init routine has to have the
+     "if"s to decide which one)
 
-*** I somehow believe that my KIM code was faster once for serial
-    calculations... I could be wrong, though.
+   PROBLEM: how to _optionally_ publish the additional ZBL params?
 
-
-* test suite
-
-** something like the vc_forces_numer_deriv, but which iterates through
-   several PBCs: (0,0,0), (0,0,1), (0,1,0), (0,1,1), ...
-
-   several box shapes
-
-   several crystal structures with and without defects
-
-   some sort of amorphous structure
-
-** a test box, computed by LAMMPS including potential energies and forces;
-   the potential should give the same values that are included in the dump
-   file +/- a tolerance; this could also be a more general purpose program
-
-** both of those may be interesting for the project at large
-
-** why are there no properties on the KIM website for the Tersoff driver?
-
-** especially test changing the published parameters!
-
-
-* comment code better
-
-* use assert() macro to check bounds etc and disable for release builds
+   PROBLEM 2: now this also needs to be ported to process_dEdr...
