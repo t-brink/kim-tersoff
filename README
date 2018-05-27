@@ -14,3 +14,5 @@ by this model driver (and LAMMPS).  There are also some example input
 files for the script.
 
 Author: Tobias Brink <brink@mm.tu-darmstadt.de>
+
+Thanks to Mingjian Wen for adding process_dEdr support.
