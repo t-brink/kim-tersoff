@@ -140,13 +140,10 @@ static int compute(KIM_API_model** kimmdl) {
   double* energy;
   double* particle_energy;
   double* f;
-  double* boxSideLengths;
-  kim_model.getm_data_by_index(&error, 7*3,
+  kim_model.getm_data_by_index(&error, 6*3,
                                ki.numberOfParticles, &n_atoms, 1,
                                ki.particleTypes, &atom_types, 1,
                                ki.coordinates, &c, 1,
-                               ki.boxSideLengths, &boxSideLengths,
-                                                  (ki.nbc == KIM_MI_OPBC_F),
                                ki.energy, &energy, compute_energy,
                                ki.particleEnergy, &particle_energy,
                                                   compute_particleEnergy,
@@ -160,8 +157,6 @@ static int compute(KIM_API_model** kimmdl) {
   Array2D<double> coord(c, *n_atoms, 3);
   if (!compute_energy)
     energy = NULL;
-  if (ki.nbc != KIM_MI_OPBC_F)
-    boxSideLengths = NULL;
   if (!compute_particleEnergy)
     particle_energy = NULL;
   Array2D<double> forces(f, *n_atoms, 3);
@@ -169,33 +164,8 @@ static int compute(KIM_API_model** kimmdl) {
 
   // Calculate values.
   try {
-    bool use_neighbor_list, use_distvec;
-    switch (ki.nbc) {
-    case KIM_CLUSTER:
-      use_neighbor_list = false;
-      use_distvec = false;
-      break;
-    case KIM_MI_OPBC_F:
-      use_neighbor_list = true;
-      use_distvec = false;
-      break;
-    case KIM_NEIGH_PURE_F:
-      use_neighbor_list = true;
-      use_distvec = false;
-      break;
-    case KIM_NEIGH_RVEC_F:
-      use_neighbor_list = true;
-      use_distvec = true;
-      break;
-    default:
-      kim_model.report_error(__LINE__, __FILE__,
-                             "Unknown NBC, probably bug in model driver!",
-                             KIM_STATUS_FAIL);
-      return KIM_STATUS_FAIL;
-    }
-    tersoff->compute(kim_model, use_neighbor_list, use_distvec,
-                     ki.neigh_access_mode,
-                     *n_atoms, atom_types, coord, boxSideLengths,
+    tersoff->compute(kim_model,
+                     *n_atoms, atom_types, coord,
                      energy, particle_energy, forces_ptr,
                      compute_process_dEdr);
   } catch (const exception& e) {
@@ -312,11 +282,10 @@ int model_driver_init(void* km, // The KIM model object
 
   // Get KIM indices for efficiency.
   KimIndices kim_indices;
-  kim_model.getm_index(&error, 8*3,
+  kim_model.getm_index(&error, 7*3,
                        "numberOfParticles", &kim_indices.numberOfParticles, 1,
                        "particleSpecies", &kim_indices.particleTypes, 1,
                        "coordinates", &kim_indices.coordinates, 1,
-                       "boxSideLengths", &kim_indices.boxSideLengths, 1,
                        "energy", &kim_indices.energy, 1,
                        "particleEnergy", &kim_indices.particleEnergy, 1,
                        "forces", &kim_indices.forces, 1,
@@ -326,58 +295,6 @@ int model_driver_init(void* km, // The KIM model object
     kim_model.report_error(__LINE__, __FILE__, "KIM_API_getm_index",
                            error);
     return error;
-  }
-
-  // Get neighbor list style/boundary conditions.
-  const char* nbc_str;
-  error = kim_model.get_NBC_method(&nbc_str);
-  if (error < KIM_STATUS_OK) {
-    kim_model.report_error(__LINE__, __FILE__, "KIM_API_get_NBC_method",
-                           error);
-    return error;
-  }
-  string nbc(nbc_str);
-
-  if (nbc == "NEIGH_RVEC_F")
-    kim_indices.nbc = KIM_NEIGH_RVEC_F;
-  else if (nbc == "NEIGH_PURE_F")
-    kim_indices.nbc = KIM_NEIGH_PURE_F;
-  else if (nbc == "MI_OPBC_F")
-    kim_indices.nbc = KIM_MI_OPBC_F;
-  else if (nbc == "CLUSTER")
-    kim_indices.nbc = KIM_CLUSTER;
-  else {
-    kim_model.report_error(__LINE__, __FILE__,
-                           ("Unknown NBC: " + nbc +
-                            ". What are you doing?").c_str(),
-                           KIM_STATUS_FAIL);
-    return KIM_STATUS_FAIL;
-  }
-
-  // Iterator or locator mode?
-  int iter_loca = kim_model.get_neigh_mode(&error);
-  if (error < KIM_STATUS_OK) {
-    kim_model.report_error(__LINE__, __FILE__, "KIM_API_get_neigh_mode",
-                           error);
-    return error;
-  }
-  switch (iter_loca) {
-  case 1:
-    kim_indices.neigh_access_mode = KIM_ITERATOR_MODE;
-    break;
-  case 2:
-    kim_indices.neigh_access_mode = KIM_LOCATOR_MODE;
-    break;
-  /*
-  case 3:
-    ????
-    break;
-  */
-  default:
-    kim_model.report_error(__LINE__, __FILE__,
-                           "Unknown/unsupported neighbor mode.",
-                           KIM_STATUS_FAIL);
-    return KIM_STATUS_FAIL;
   }
 
   // Init the model object (reads parameters from file).

@@ -59,16 +59,8 @@ SPECIES_016_NAME_STR        spec                   15
 CONVENTIONS:
 
 ZeroBasedLists              flag
-#Neigh_IterAccess            flag
 Neigh_LocaAccess            flag
-NEIGH_RVEC_F                flag
 NEIGH_PURE_F                flag
-MI_OPBC_F                   flag
-CLUSTER                     flag
-
-# Cannot support half lists due to functional form which would then
-# need neighbors of i and j at once in an inner loop.  This is not
-# possible to implement efficiently.
 
 
 ## Input spec ##########################################################

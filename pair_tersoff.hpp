@@ -38,28 +38,11 @@ const double pi   = 3.14159265358979323846;  /* pi */
 const double pi_2 = 1.57079632679489661923;  /* pi/2 */
 const double pi_4 = 0.78539816339744830962;  /* pi/4 */
 
-enum KIM_NBC { // Only for internal use; no mapping to any integer
-               // returned from the KIM API.
-  KIM_CLUSTER,
-  KIM_NEIGH_PURE_H,
-  KIM_NEIGH_PURE_F,
-  KIM_NEIGH_RVEC_F,
-  KIM_MI_OPBC_H,
-  KIM_MI_OPBC_F
-};
-
-enum KIM_IterLoca { // constants defined by the KIM API!
-  KIM_ITERATOR_MODE = 0, // Sequential access.
-  KIM_LOCATOR_MODE = 1   // This is random access.
-};
-
 struct KimIndices {
   // Required inputs.
   int numberOfParticles;
   int particleTypes;
   int coordinates;
-  // Optional inputs.
-  int boxSideLengths;
   // Optional outputs.
   int energy;
   //int compute_energy; // was energy requested?
@@ -68,10 +51,6 @@ struct KimIndices {
   int forces;
   //int compute_forces; // was forces requested?
   int process_dEdr;
-
-  // Non-index stuff.
-  KIM_NBC nbc;
-  KIM_IterLoca neigh_access_mode;
 };
 
 
@@ -197,9 +176,9 @@ class PairTersoff /*: public Pair*/ {
               const KimIndices& ki
               );
   virtual ~PairTersoff();
-  void compute(KIM_API_model&, bool, bool, KIM_IterLoca,
+  void compute(KIM_API_model&,
                int, const int*, const Array2D<double>&,
-               double*, double*, double*, Array2D<double>*,
+               double*, double*, Array2D<double>*,
                bool) const;
   void update_params(); // Copy from KIM-published parameters to internal.
   double cutoff() const {
@@ -227,7 +206,7 @@ class PairTersoff /*: public Pair*/ {
               int, double, double, double,
               double, double, double, double,
               double,
-              double*, double*) const;
+              const double*, const double*) const;
   double force_zeta(double, double, double, double,
                     double, double,
                     double, double,
@@ -276,11 +255,12 @@ class PairTersoff /*: public Pair*/ {
 
   inline void run_process_dEdr(KIM_API_model* kim_model_ptr,
                                double dEdr, double r,
-                               double* dr, int i, int j,
+                               const double* dr, int i, int j,
                                int line, const char* file) const {
     // This function serves mostly to hide the warts of the KIM API.
+    //TODO: remove the const cast!!!!!!            
     int error = kim_model_ptr->process_dEdr(&kim_model_ptr, &dEdr, &r,
-                                            &dr, &i, &j);
+                                            const_cast<double**>(&dr), &i, &j); 
     if (error < KIM_STATUS_OK) {
       kim_model_ptr->report_error(line, file, "KIM_API_process_dEdr", error);
       throw std::runtime_error("compute: Error in KIM_API_process_dEdr");

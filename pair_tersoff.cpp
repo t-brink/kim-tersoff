@@ -63,13 +63,13 @@ PairTersoff::~PairTersoff()
 
 
 /* Helper to check if an atom is a ghost atom --------------------------- */
-bool is_ghost(KIM_API_model& kim_model, int j, int mode) {
+bool is_ghost(KIM_API_model& kim_model, int j) {
   int num_neigh = 0;
   int jj;          // unused
   int* neighbors;  // unused
   double* distvec; // unused
   int error =
-    kim_model.get_neigh(mode, j, &jj, &num_neigh, &neighbors, &distvec);
+    kim_model.get_neigh(1, j, &jj, &num_neigh, &neighbors, &distvec);
   if (error < KIM_STATUS_OK) {
     kim_model.report_error(__LINE__, __FILE__,
                            "KIM_API_get_neigh",
@@ -82,13 +82,9 @@ bool is_ghost(KIM_API_model& kim_model, int j, int mode) {
 /* ---------------------------------------------------------------------- */
 
 void PairTersoff::compute(KIM_API_model& kim_model,
-                          bool use_neighbor_list, // false -> cluster/MI_OPBC
-                          bool use_distvec, // use rij array from neighbor list?
-                          KIM_IterLoca access_mode,
                           int n_atoms, // Actual number of atoms
                           const int* atom_types,
                           const Array2D<double>& atom_coords,
-                          double* boxSideLengths, // If != NULL -> MI_OPBC.
                           double* energy, double* atom_energy,
                           Array2D<double>* forces,
                           bool compute_process_dEdr) const
@@ -97,7 +93,7 @@ void PairTersoff::compute(KIM_API_model& kim_model,
   int error;       // KIM error code.
   int n_neigh;     // Number of neighbors of i.
   int* neighbors;  // The indices of the neighbors.
-  double* distvec; // Rij vectors.
+  double* distvec; // Rij vectors. TODO: remove     
   const bool eflag = energy || atom_energy; // Calculate energy?
 
   // If requested, reset energy.
@@ -116,64 +112,26 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       (*forces)(i, 2) = 0.0;
     }
 
-
-  // In iterator mode: reset the iterator.
-  if (use_neighbor_list && access_mode == KIM_ITERATOR_MODE) {
-    error =
-      kim_model.get_neigh(access_mode,
-                          0, // reset iterator.
-                          &ii, // not set when resetting
-                          &n_neigh, // not set when resetting
-                          &neighbors, // not set when resetting
-                          &distvec // not set when resetting
-                          );
-    if (error < KIM_STATUS_OK && error != KIM_STATUS_NEIGH_ITER_INIT_OK) {
-      kim_model.report_error(__LINE__, __FILE__,
-                             "KIM_API_get_neigh (reset iterator)",
-                             error);
-      throw runtime_error("compute: Error in KIM_API_get_neigh");
-    }
-  } else { // cluster
-    n_neigh = n_atoms;
-    distvec = NULL;
-  }
-
-  const bool cannot_use_half_list = (!use_neighbor_list ||
-                                     (access_mode != KIM_LOCATOR_MODE));
-
   // loop over full neighbor list of my atoms
 
-  // ii will only be changed in locator mode, otherwise it stays zero
-  // and the loop will be broken by iterator access return code.
   ii = 0;
   while (ii != n_atoms) {
     int i;
     // Get neighbors.
-    if (use_neighbor_list) {
-      error =
-        kim_model.get_neigh(access_mode, // locator or iterator
-                            // The central atom or command to get next
-                            // atom in iterator mode.
-                            (access_mode == KIM_LOCATOR_MODE
-                             ? ii++
-                             : 1),
-                            // Output.
-                            &i, // The central atom.
-                            &n_neigh, // Number of neighbors
-                            &neighbors, // The neighbor indices
-                            &distvec // Rij
-                            );
-      if (access_mode == KIM_ITERATOR_MODE &&
-          error == KIM_STATUS_NEIGH_ITER_PAST_END)
-        break; // Loop breaking condition is that we used up all central atoms.
-      if (error < KIM_STATUS_OK) {
-        kim_model.report_error(__LINE__, __FILE__, "KIM_API_get_neigh",
-                               error);
-        throw runtime_error("compute: Error in KIM_API_get_neigh");
-      }
-    } else {
-      i = ii;
-      ++ii;
+    error =
+      kim_model.get_neigh(1, // locator mode
+                          // The central atom. Increment after.
+                          ii++,
+                          // Output.
+                          &i, // The central atom.
+                          &n_neigh, // Number of neighbors
+                          &neighbors, // The neighbor indices
+                          &distvec // Rij
+                          );
+    if (error < KIM_STATUS_OK) {
+      kim_model.report_error(__LINE__, __FILE__, "KIM_API_get_neigh",
+                             error);
+      throw runtime_error("compute: Error in KIM_API_get_neigh");
     }
 
     const int itype = atom_types[i];
@@ -182,24 +140,12 @@ void PairTersoff::compute(KIM_API_model& kim_model,
     const double ztmp = atom_coords(i,2);
 
     for (int jj = 0; jj != n_neigh; ++jj) {
-      int j = use_neighbor_list ? neighbors[jj] : jj;
-      if (!use_neighbor_list && i == j) continue;
+      int j = neighbors[jj];
       const int jtype = atom_types[j];
 
-      double delr_ij[3];
-      if (use_distvec) {
-        delr_ij[0] = distvec[jj*3 + 0];
-        delr_ij[1] = distvec[jj*3 + 1];
-        delr_ij[2] = distvec[jj*3 + 2];
-      } else {
-        delr_ij[0] = atom_coords(j,0) - xtmp;
-        delr_ij[1] = atom_coords(j,1) - ytmp;
-        delr_ij[2] = atom_coords(j,2) - ztmp;
-        if (boxSideLengths)
-          for (int d = 0; d != 3; ++d)
-            if (abs(delr_ij[d]) > 0.5 * boxSideLengths[d])
-              delr_ij[d] -= (delr_ij[d]/abs(delr_ij[d]))*boxSideLengths[d];
-      }
+      const double delr_ij[3] = { atom_coords(j,0) - xtmp,
+                                  atom_coords(j,1) - ytmp,
+                                  atom_coords(j,2) - ztmp };
       const double rsq_ij = delr_ij[0]*delr_ij[0]
                           + delr_ij[1]*delr_ij[1]
                           + delr_ij[2]*delr_ij[2];
@@ -214,10 +160,8 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       const double fc_ij = ters_fc(r_ij, R, D); // Value of the cutoff function.
       const double dfc_ij = ters_fc_d(r_ij, R, D); // Derivative of fc_ij.
 
-      // two-body interactions, skip half of them unless j is a ghost
-      // atom and only if using neighbor list with locator
-      const bool j_ghost =
-        cannot_use_half_list ? true : is_ghost(kim_model, j, 1);
+      // two-body interactions, skip half of them unless j is a ghost atom
+      const bool j_ghost = is_ghost(kim_model, j);
       if (j_ghost || (i < j)) {
         const double lam1 = params2(itype,jtype).lam1;
         const double A = params2(itype,jtype).A;
@@ -268,27 +212,12 @@ void PairTersoff::compute(KIM_API_model& kim_model,
 
       for (int kk = 0; kk != n_neigh; ++kk) {
         if (jj == kk) continue;
-        int k = use_neighbor_list ? neighbors[kk] : kk;
-        if (!use_neighbor_list && i == k)
-          // Needed in cluster mode, as there is no neighbor list
-          // which will make sure i = k doesn't happen!
-          continue;
+        int k = neighbors[kk];
         const int ktype = atom_types[k];
 
-        double delr_ik[3];
-        if (use_distvec) {
-          delr_ik[0] = distvec[kk*3 + 0];
-          delr_ik[1] = distvec[kk*3 + 1];
-          delr_ik[2] = distvec[kk*3 + 2];
-        } else {
-          delr_ik[0] = atom_coords(k,0) - xtmp;
-          delr_ik[1] = atom_coords(k,1) - ytmp;
-          delr_ik[2] = atom_coords(k,2) - ztmp;
-          if (boxSideLengths)
-            for (int d = 0; d != 3; ++d)
-              if (abs(delr_ik[d]) > 0.5 * boxSideLengths[d])
-                delr_ik[d] -= (delr_ik[d]/abs(delr_ik[d]))*boxSideLengths[d];
-        }
+        const double delr_ik[3] = { atom_coords(k,0) - xtmp,
+                                    atom_coords(k,1) - ytmp,
+                                    atom_coords(k,2) - ztmp };
         const double rsq_ik = delr_ik[0]*delr_ik[0]
                             + delr_ik[1]*delr_ik[1]
                             + delr_ik[2]*delr_ik[2];
@@ -362,30 +291,15 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       if (forces || compute_process_dEdr) {
         for (int kk = 0; kk != n_neigh; ++kk) {
           if (jj == kk) continue;
-          int k = use_neighbor_list ? neighbors[kk] : kk;
-          if (!use_neighbor_list && i == k)
-            // Needed in cluster mode, as there is no neighbor list
-            // which will make sure i = k doesn't happen!
-            continue;
+          int k = neighbors[kk];
           const int ktype = atom_types[k];
 
-          double delr_ik[3];
-          if (use_distvec) {
-            delr_ik[0] = distvec[kk*3 + 0];
-            delr_ik[1] = distvec[kk*3 + 1];
-            delr_ik[2] = distvec[kk*3 + 2];
-          } else {
-            delr_ik[0] = atom_coords(k,0) - xtmp;
-            delr_ik[1] = atom_coords(k,1) - ytmp;
-            delr_ik[2] = atom_coords(k,2) - ztmp;
-            if (boxSideLengths)
-              for (int d = 0; d != 3; ++d)
-                if (abs(delr_ik[d]) > 0.5 * boxSideLengths[d])
-                  delr_ik[d] -= (delr_ik[d]/abs(delr_ik[d]))*boxSideLengths[d];
-          }
+          const double delr_ik[3] = { atom_coords(k,0) - xtmp,
+                                      atom_coords(k,1) - ytmp,
+                                      atom_coords(k,2) - ztmp };
           const double rsq_ik = delr_ik[0]*delr_ik[0]
-            + delr_ik[1]*delr_ik[1]
-            + delr_ik[2]*delr_ik[2];
+                              + delr_ik[1]*delr_ik[1]
+                              + delr_ik[2]*delr_ik[2];
           const double cutsq = params3(itype,jtype,ktype).cutsq;
           if (rsq_ik > cutsq) continue;
 
@@ -676,7 +590,7 @@ double PairTersoff::zeta(double rij, double rik,
                          int m, double lam3, double R, double D,
                          double gamma, double c2, double d2, double c2_d2,
                          double h,
-                         double* delrij, double* delrik) const
+                         const double* delrij, const double* delrik) const
 {
   const double costheta = (delrij[0]*delrik[0]
                            + delrij[1]*delrik[1]
