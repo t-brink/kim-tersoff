@@ -1,4 +1,4 @@
-# Copyright (c) 2012,2013,2014,2018 Tobias Brink
+# Copyright (c) 2019 Tobias Brink
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -19,14 +19,32 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-include ../Makefile.KIM_Config
+#
+# Required preamble
+#
 
-MODEL_DRIVER_NAME := Tersoff_LAMMPS__MD_077075034781_002
-MODEL_DRIVER_KIM_FILE_TEMPLATE := Tersoff_LAMMPS.kim.tpl
-MODEL_DRIVER_INIT_FUNCTION_NAME := model_driver_init
+cmake_minimum_required(VERSION 3.4)
 
-LOCALOBJ = pair_tersoff.o model_driver_Tersoff.o
+list(APPEND CMAKE_PREFIX_PATH $ENV{KIM_API_V2_CMAKE_PREFIX_DIR})
+find_package(KIM-API-V2 2.0 REQUIRED CONFIG)
+if(NOT TARGET kim-api)
+  enable_testing()
+  project("${KIM_API_PROJECT_NAME}" VERSION "${KIM_API_VERSION}"
+    LANGUAGES CXX C Fortran)
+endif()
 
-LOCALCLEAN =
+# End preamble
 
-include $(KIM_DIR)/$(builddir)/Makefile.ModelDriver
+
+set(MODEL_DRIVER_NAME "Tersoff_LAMMPS__MD_077075034781_003")
+
+add_kim_api_model_driver_library(
+  NAME                    ${MODEL_DRIVER_NAME}
+  CREATE_ROUTINE_NAME     "model_driver_create"
+  CREATE_ROUTINE_LANGUAGE "cpp"
+  )
+
+target_sources(${MODEL_DRIVER_NAME} PRIVATE
+  model_driver_Tersoff.cpp
+  pair_tersoff.cpp
+  )

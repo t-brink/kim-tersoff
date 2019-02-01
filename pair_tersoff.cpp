@@ -14,7 +14,7 @@
 /* ----------------------------------------------------------------------
    Contributing author: Aidan Thompson (SNL)
 
-   Modified for use with KIM by Tobias Brink (2012,2013,2014,2017,2018).
+   Modified for use with KIM by Tobias Brink (2012,2013,2014,2017,2018,2019).
 
    process_dEdr support added by Mingjian Wen (2018)
 ------------------------------------------------------------------------- */
@@ -25,24 +25,19 @@
 #include <fstream>
 #include <sstream>
 
-#include <KIM_API_status.h>
-
 using namespace model_driver_Tersoff;
 using namespace std;
 
 /* ---------------------------------------------------------------------- */
 
-PairTersoff::PairTersoff(string parameter_file,
+PairTersoff::PairTersoff(const string& parameter_file,
                          int n_spec,
                          map<string,int> type_map,
                          // Conversion factors.
                          double energy_conv,
                          double length_conv,
-                         double inv_length_conv,
-                         // KIM indices.
-                         const KimIndices& ki
-                         )
-  : kim_indices(ki), kim_params(n_spec), n_spec(n_spec),
+                         double inv_length_conv)
+  : kim_params(n_spec), n_spec(n_spec),
     params2(n_spec, n_spec), params3(n_spec, n_spec, n_spec)
 {
   // Prepare index -> element name mapping.
@@ -61,39 +56,23 @@ PairTersoff::~PairTersoff()
 {
 }
 
-
-/* Helper to check if an atom is a ghost atom --------------------------- */
-bool is_ghost(KIM_API_model& kim_model, int j) {
-  int num_neigh = 0;
-  int jj;          // unused
-  int* neighbors;  // unused
-  double* distvec; // unused
-  int error =
-    kim_model.get_neigh(1, j, &jj, &num_neigh, &neighbors, &distvec);
-  if (error < KIM_STATUS_OK) {
-    kim_model.report_error(__LINE__, __FILE__,
-                           "KIM_API_get_neigh",
-                           error);
-    throw runtime_error("compute: Error in KIM_API_get_neigh");
-  }
-  return num_neigh == 0;
-}
-
 /* ---------------------------------------------------------------------- */
 
-void PairTersoff::compute(KIM_API_model& kim_model,
+void PairTersoff::compute(const KIM::ModelComputeArguments&
+                                            model_compute_arguments,
                           int n_atoms, // Actual number of atoms
-                          const int* atom_types,
-                          const Array2D<double>& atom_coords,
+                          const int * const atom_types,
+                          const int * const contributing,
+                          const Array2D<const double>& atom_coords,
                           double* energy, double* atom_energy,
                           Array2D<double>* forces,
+                          double* virial,
+                          Array2D<double>* particle_virial,
                           bool compute_process_dEdr) const
 {
-  int ii;          // Iteration over all atoms.
   int error;       // KIM error code.
   int n_neigh;     // Number of neighbors of i.
-  int* neighbors;  // The indices of the neighbors.
-  double* distvec; // Rij vectors. TODO: remove     
+  const int * neighbors;  // The indices of the neighbors.
   const bool eflag = energy || atom_energy; // Calculate energy?
 
   // If requested, reset energy.
@@ -112,26 +91,26 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       (*forces)(i, 2) = 0.0;
     }
 
+  // Reset virial.
+  // TODO: virial not computed, yet                 
+  if (virial)
+    for (int i = 0; i != 6; ++i)
+      virial[i] = 0.0;
+  if (particle_virial)
+    for (int i = 0; i != n_atoms; ++i)
+      for (int j = 0; j != 6; ++j)
+        (*particle_virial)(i, j) = 0.0;
+
   // loop over full neighbor list of my atoms
 
-  ii = 0;
-  while (ii != n_atoms) {
-    int i;
+  for (int i = 0; i != n_atoms; ++i) {
     // Get neighbors.
     error =
-      kim_model.get_neigh(1, // locator mode
-                          // The central atom. Increment after.
-                          ii++,
-                          // Output.
-                          &i, // The central atom.
-                          &n_neigh, // Number of neighbors
-                          &neighbors, // The neighbor indices
-                          &distvec // Rij
-                          );
-    if (error < KIM_STATUS_OK) {
-      kim_model.report_error(__LINE__, __FILE__, "KIM_API_get_neigh",
-                             error);
-      throw runtime_error("compute: Error in KIM_API_get_neigh");
+      model_compute_arguments.GetNeighborList(0, i, &n_neigh, &neighbors);
+    if (error) {
+      //TODO: log      
+      throw runtime_error("compute: Error in "
+                          "KIM::ModelComputeArguments.GetNeighborList");
     }
 
     const int itype = atom_types[i];
@@ -161,8 +140,7 @@ void PairTersoff::compute(KIM_API_model& kim_model,
       const double dfc_ij = ters_fc_d(r_ij, R, D); // Derivative of fc_ij.
 
       // two-body interactions, skip half of them unless j is a ghost atom
-      const bool j_ghost = is_ghost(kim_model, j);
-      if (j_ghost || (i < j)) {
+      if (!contributing[j] || (i < j)) {
         const double lam1 = params2(itype,jtype).lam1;
         const double A = params2(itype,jtype).A;
 
@@ -170,14 +148,14 @@ void PairTersoff::compute(KIM_API_model& kim_model,
         const double fpair =
           repulsive(r_ij, fc_ij, dfc_ij, lam1, A, eflag, evdwl);
 
-        const double half_prefactor = j_ghost ? 0.5 : 1.0;
+        const double half_prefactor = contributing[j] ? 1.0 : 0.5;
 
         if (energy)
           *energy += half_prefactor * evdwl;
 
         if (atom_energy) {
           atom_energy[i] += 0.5 * evdwl;
-          if (!j_ghost)
+          if (contributing[j])
             atom_energy[j] += 0.5 * evdwl;
         }
 
@@ -196,7 +174,7 @@ void PairTersoff::compute(KIM_API_model& kim_model,
           }
 
           if (compute_process_dEdr) {
-            run_process_dEdr(&kim_model,
+            run_process_dEdr(model_compute_arguments,
                              -half_prefactor*fpair*r_ij, // dEdr
                              r_ij, delr_ij, i, j,
                              __LINE__, __FILE__);
@@ -278,7 +256,7 @@ void PairTersoff::compute(KIM_API_model& kim_model,
         }
 
         if (compute_process_dEdr) {
-          run_process_dEdr(&kim_model,
+          run_process_dEdr(model_compute_arguments,
                            fzeta*r_ij, // dEdr
                            r_ij, delr_ij, i, j,
                            __LINE__, __FILE__);
@@ -345,11 +323,14 @@ void PairTersoff::compute(KIM_API_model& kim_model,
           }
 
           if (compute_process_dEdr) {
-            run_process_dEdr(&kim_model, dEdr_ij, r_ij, delr_ij, i, j,
+            run_process_dEdr(model_compute_arguments,
+                             dEdr_ij, r_ij, delr_ij, i, j,
                              __LINE__, __FILE__);
-            run_process_dEdr(&kim_model, dEdr_ik, r_ik, delr_ik, i, k,
+            run_process_dEdr(model_compute_arguments,
+                             dEdr_ik, r_ik, delr_ik, i, k,
                              __LINE__, __FILE__);
-            run_process_dEdr(&kim_model, dEdr_jk, r_jk, delr_jk, j, k,
+            run_process_dEdr(model_compute_arguments,
+                             dEdr_jk, r_jk, delr_jk, j, k,
                              __LINE__, __FILE__);
           }
         }
@@ -370,7 +351,7 @@ void PairTersoff::read_params(istream& infile, std::map<string,int> type_map,
                               double energy_conv,
                               double length_conv,
                               double inv_length_conv) {
-  // Strip comments lines.
+  // Strip comment lines.
   stringstream buffer;
   string line;
   while(getline(infile, line))

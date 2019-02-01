@@ -1,3 +1,10 @@
+* write tests for process_dEdr:
+
+   * calculate forces and check if they are consistent with
+     the forces provided by the model
+
+   * ... ?
+
 * port to KIM 2.0
 
 * implement ZBL. But how?

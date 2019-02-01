@@ -12,7 +12,7 @@
 ------------------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------------
-   Modified for use with KIM by Tobias Brink (2012,2013,2017,2018).
+   Modified for use with KIM by Tobias Brink (2012,2013,2017,2018,2019).
 
    process_dEdr support added by Mingjian Wen (2018)
 ------------------------------------------------------------------------- */
@@ -25,8 +25,7 @@
 #include <map>
 #include <istream>
 
-#include <KIM_API.h>
-#include <KIM_API_status.h>
+#include "KIM_ModelDriverHeaders.hpp"
 
 #include "ndarray.hpp"
 
@@ -37,21 +36,6 @@ namespace model_driver_Tersoff {
 const double pi   = 3.14159265358979323846;  /* pi */
 const double pi_2 = 1.57079632679489661923;  /* pi/2 */
 const double pi_4 = 0.78539816339744830962;  /* pi/4 */
-
-struct KimIndices {
-  // Required inputs.
-  int numberOfParticles;
-  int particleTypes;
-  int coordinates;
-  // Optional outputs.
-  int energy;
-  //int compute_energy; // was energy requested?
-  int particleEnergy;
-  //int compute_particleEnergy; // was particleEnergy requested?
-  int forces;
-  //int compute_forces; // was forces requested?
-  int process_dEdr;
-};
 
 
 class PairTersoff /*: public Pair*/ {
@@ -99,11 +83,8 @@ class PairTersoff /*: public Pair*/ {
         gamma(N,N,N),
         m(N,N,N),
         n(N,N), beta(N,N),
-        D(N,N,N), R(N,N,N)
-    {
-      shape2[0] = N; shape2[1] = N;
-      shape3[0] = N; shape3[1] = N; shape3[2] = N;
-    }
+        D(N,N,N), R(N,N,N),
+        size2(N*N), size3(N*N*N) {}
     // Copy data from a Params array.
     void from_params(const Array2D<Params2>& p2, const Array3D<Params3>& p3) {
       for (int i = 0; i < A.extent(0); ++i)
@@ -159,32 +140,33 @@ class PairTersoff /*: public Pair*/ {
     Array2D<double> n, beta;
     // Cutoff related.
     Array3D<double> D, R;
-    // The shape of all parameter arrays. Needed for calls to
-    // KIM_API_model::set_shape().
-    int shape2[2];
-    int shape3[3];
+    // The size of all parameter arrays. Needed for calls to
+    // KIM::ModelDriverCreate.SetParameterPointer().
+    const int size2;
+    const int size3;
   };
 
-  PairTersoff(std::string parameter_file,
+  PairTersoff(const std::string& parameter_file,
               int n_spec,
               std::map<std::string,int> type_map,
               // Conversion factors.
               double energy_conv,
               double length_conv,
-              double inv_length_conv,
-              // KIM indices.
-              const KimIndices& ki
-              );
+              double inv_length_conv);
   virtual ~PairTersoff();
-  void compute(KIM_API_model&,
-               int, const int*, const Array2D<double>&,
+  void compute(const KIM::ModelComputeArguments&,
+               int, const int * const, const int * const,
+               const Array2D<const double>&,
                double*, double*, Array2D<double>*,
+               double*, Array2D<double>*,
                bool) const;
   void update_params(); // Copy from KIM-published parameters to internal.
   double cutoff() const {
     return max_cutoff;
   }
-  const KimIndices kim_indices;
+  double const * cutoff_ptr() const {
+    return &max_cutoff;
+  }
   KIMParams kim_params; // Parameters published to KIM, see above why
                         // we keep two copies.
 
@@ -253,17 +235,19 @@ class PairTersoff /*: public Pair*/ {
     return gamma*numerator*denominator*denominator;
   }
 
-  inline void run_process_dEdr(KIM_API_model* kim_model_ptr,
+  inline void run_process_dEdr(const KIM::ModelComputeArguments&
+                                            model_compute_arguments,
                                double dEdr, double r,
                                const double* dr, int i, int j,
                                int line, const char* file) const {
-    // This function serves mostly to hide the warts of the KIM API.
-    //TODO: remove the const cast!!!!!!            
-    int error = kim_model_ptr->process_dEdr(&kim_model_ptr, &dEdr, &r,
-                                            const_cast<double**>(&dr), &i, &j); 
-    if (error < KIM_STATUS_OK) {
-      kim_model_ptr->report_error(line, file, "KIM_API_process_dEdr", error);
-      throw std::runtime_error("compute: Error in KIM_API_process_dEdr");
+    // This function serves mostly to avoid repeating the error handling.
+    int error = model_compute_arguments.ProcessDEDrTerm(dEdr, r, dr, i, j);
+    if (error) {
+      model_compute_arguments.LogEntry(KIM::LOG_VERBOSITY::error,
+                                       "run_process_dEdr: KIM reported error",
+                                       line, file);
+      throw std::runtime_error("Error in "
+                               "KIM::ModelComputeArguments.ProcessDEDrTerm()");
     }
   }
 };

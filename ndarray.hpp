@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2012 Tobias Brink
+  Copyright (c) 2012,2019 Tobias Brink
 
   Permission is hereby granted, free of charge, to any person obtaining
   a copy of this software and associated documentation files (the
@@ -307,14 +307,14 @@ namespace model_driver_Tersoff {
 
     //! Manage data by the class.
     explicit Array2D(int extent_outer, int extent_inner)
-      : data(static_cast<T*>(std::malloc(extent_outer*extent_inner*sizeof(T)))),
+      : data(new T[extent_outer*extent_inner]),
         extent_outer(extent_outer), extent_inner(extent_inner),
         keep_data(false)
     {}
 
     ~Array2D() {
       if (!keep_data)
-        std::free(data);
+        delete[] data;
     }
 
     //! Return size of array in dimension e (0 is the first dimension).
@@ -363,7 +363,7 @@ namespace model_driver_Tersoff {
     {}
 
     explicit Array3D(int extent0, int extent1, int extent2)
-      : data(static_cast<T*>(malloc(extent0*extent1*extent2*sizeof(T)))),
+      : data(new T[extent0*extent1*extent2]),
         extent0(extent0), extent1(extent1), extent2(extent2),
         fac_i(extent1*extent2),
         keep_data(false)
@@ -371,7 +371,7 @@ namespace model_driver_Tersoff {
 
     ~Array3D() {
       if (!keep_data)
-        std::free(data);
+        delete[] data;
     }
 
     //! Return size of array in dimension e (0 is the first dimension).
@@ -451,7 +451,7 @@ namespace model_driver_Tersoff {
     {}
 
     explicit Array4D(int extent0, int extent1, int extent2, int extent3)
-      : data(static_cast<T*>(malloc(extent0*extent1*extent2*extent3*sizeof(T)))),
+      : data(new T[extent0*extent1*extent2*extent3]),
         extent0(extent0), extent1(extent1), extent2(extent2), extent3(extent3),
         fac_i(extent1*extent2*extent3),
         fac_j(extent2*extent3),
@@ -460,7 +460,7 @@ namespace model_driver_Tersoff {
 
     ~Array4D() {
       if (!keep_data)
-        std::free(data);
+        delete[] data;
     }
 
     //! Return size of array in dimension e (0 is the first dimension).
