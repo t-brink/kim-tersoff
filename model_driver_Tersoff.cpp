@@ -55,9 +55,9 @@ extern "C" {
 }
 
 // For some reason, KIM wants a pointer to that instead of just
-// copying a bool. So be it, I'll define a constant.
-// TODO: figure out what value it should have      
-static const int doesnt_use_ghost_neighbors = 0;   
+// copying a bool. So be it, I'll define a constant, which is false
+// since we do use ghost particles' neighbors.
+static const int doesnt_use_ghost_neighbors = 0;
 
 // WRAPPERS AND INTERFACE TO KIM ///////////////////////////////////////
 
@@ -168,22 +168,22 @@ compute(const KIM::ModelCompute * const model_compute,
   // Wrap some stuff for convenience.
   Array2D<const double> atom_coords(atom_coords_ptr, *n_atoms, 3);
   Array2D<double> f(forces_ptr, *n_atoms, 3);
-  Array2D<double>* forces = forces_ptr ? &f : NULL; //nullptr;      
+  Array2D<double>* forces = forces_ptr ? &f : NULL;
   Array2D<double> v(particle_virial_ptr, *n_atoms, 6);
-  Array2D<double>* particle_virial = particle_virial_ptr ? &v : NULL; //nullptr;     
+  Array2D<double>* particle_virial = particle_virial_ptr ? &v : NULL;
 
   // Do the compute.
   try {
-    tersoff->compute(*model_compute_arguments,   
+    tersoff->compute(*model_compute_arguments,
                      *n_atoms,
                      atom_types,
-                     contributing,    
+                     contributing,
                      atom_coords,
                      energy,
                      atom_energy,
                      forces,
-                     virial,    
-                     particle_virial,      
+                     virial,                      
+                     particle_virial,             
                      compute_process_dEdr);
   } catch (const exception& e) {
     LOG_ERROR(string("compute: ") + e.what());
@@ -246,7 +246,7 @@ static int destroy(KIM::ModelDestroy * const model_destroy) {
   PairTersoff* tersoff;
   model_destroy->GetModelBufferPointer(reinterpret_cast<void **>(&tersoff));
 
-  if (tersoff != NULL) { //nullptr) {     
+  if (tersoff != NULL) {
     delete tersoff;
   } else {
     LOG_ERROR("destroy: tried to destroy a model driver that is already null");
@@ -264,8 +264,8 @@ static int
 read_settings(KIM::ModelDriverCreate * const model_driver_create,
               const string& settings_filename,
               int& n_spec, map<string,int>& type_map) {
-  ifstream settings_file(settings_filename.c_str()); // passing the string  
-                                                     // is C++11 m(         
+  ifstream settings_file(settings_filename.c_str()); // passing the std::string
+                                                     // is C++11
   bool got_line;
 
   // Get the list of species. //////////////////////////////////////////
@@ -449,9 +449,6 @@ model_driver_create(KIM::ModelDriverCreate * const model_driver_create,
                     const KIM::ChargeUnit charge_unit,
                     const KIM::TemperatureUnit temperature_unit,
                     const KIM::TimeUnit time_unit) {
-  // QUESTION: the supported species of the model were given in the   
-  //           Makefile before; now we miss this info? YES! ADD TO PARAMS   
-
   int error;
 
   // Get parameter files. //////////////////////////////////////////////
