@@ -28,6 +28,7 @@
 #include <stdexcept>
 #include <utility>
 #include <fstream>
+#include <sstream>
 
 #include "KIM_LogMacros.hpp"
 #include "KIM_ModelDriverHeaders.hpp"
@@ -101,9 +102,8 @@ compute_arguments_create(const KIM::ModelCompute * const, // unused
 
   return error;
 }
-
-
 #undef KIM_LOGGER_OBJECT_NAME
+
 #define KIM_LOGGER_OBJECT_NAME model_compute
 
 static int
@@ -192,7 +192,6 @@ compute(const KIM::ModelCompute * const model_compute,
 
   return 0;
 }
-
 #undef KIM_LOGGER_OBJECT_NAME
 
 
@@ -219,7 +218,6 @@ refresh(KIM::ModelRefresh * const model_refresh) {
 
   return 0;
 }
-
 #undef KIM_LOGGER_OBJECT_NAME
 
 
@@ -254,11 +252,12 @@ static int destroy(KIM::ModelDestroy * const model_destroy) {
 
   return 0;
 }
-
 #undef KIM_LOGGER_OBJECT_NAME
 
 
 // Init stuff must be last, so that the other functions are already defined.
+
+#define KIM_LOGGER_OBJECT_NAME model_driver_create
 
 static int
 read_settings(KIM::ModelDriverCreate * const model_driver_create,
@@ -272,7 +271,9 @@ read_settings(KIM::ModelDriverCreate * const model_driver_create,
   string species_line;
   got_line = getline(settings_file, species_line);
   if (!got_line) {
-    //LOG error    
+    LOG_ERROR("The settings file ("
+              + settings_filename
+              + ") does not contain a line with supported particle types.");
     return 1;
   }
 
@@ -285,14 +286,15 @@ read_settings(KIM::ModelDriverCreate * const model_driver_create,
     pair<map<string,int>::iterator, bool> insertion_result =
       type_map.insert(pair<string,int>(species_name, species_id));
     if (!insertion_result.second) {
-      //LOG: element already exists      
+      LOG_ERROR("Particle type \"" + species_name + "\" occurs twice in file "
+                + settings_filename);
       return 1;
     }
     // Register to KIM.
     const KIM::SpeciesName kim_spec(species_name);
     const int error = model_driver_create->SetSpeciesCode(kim_spec, species_id);
     if (error) {
-      //LOG     
+      LOG_ERROR("Error returned by KIM's SetSpeciesCode().");
       return error;
     }
     //
@@ -302,6 +304,9 @@ read_settings(KIM::ModelDriverCreate * const model_driver_create,
 
   return 0;
 }
+#undef KIM_LOGGER_OBJECT_NAME
+
+#define KIM_LOGGER_OBJECT_NAME model_driver_create
 
 static int
 init_unit_conv(KIM::ModelDriverCreate * const model_driver_create,
@@ -327,7 +332,8 @@ init_unit_conv(KIM::ModelDriverCreate * const model_driver_create,
                                            1.0, 0.0, 0.0, 0.0, 0.0,
                                            &length_conv);
   if (error) {
-    // TODO: this is an error, log it.     
+    LOG_ERROR("Error returned by KIM's ConvertUnit() when trying to "
+              "get length units.");
     return error;
   }
 
@@ -343,7 +349,8 @@ init_unit_conv(KIM::ModelDriverCreate * const model_driver_create,
                                            -1.0, 0.0, 0.0, 0.0, 0.0,
                                            &inv_length_conv);
   if (error) {
-    // TODO: this is an error, log it.     
+    LOG_ERROR("Error returned by KIM's ConvertUnit() when trying to "
+              "get inverse length units.");
     return error;
   }
 
@@ -359,7 +366,8 @@ init_unit_conv(KIM::ModelDriverCreate * const model_driver_create,
                                            0.0, 1.0, 0.0, 0.0, 0.0,
                                            &energy_conv);
   if (error) {
-    // TODO: this is an error, log it.     
+    LOG_ERROR("Error returned by KIM's ConvertUnit() when trying to "
+              "get energy units.");
     return error;
   }
 
@@ -369,12 +377,13 @@ init_unit_conv(KIM::ModelDriverCreate * const model_driver_create,
                                         KIM::TEMPERATURE_UNIT::unused,
                                         KIM::TIME_UNIT::unused);
   if (error) {
-    // TODO: this is an error, log it.     
+    LOG_ERROR("Error returned by KIM's SetUnits().");
     return error;
   }
 
   return 0;
 }
+#undef KIM_LOGGER_OBJECT_NAME
 
 
 #define REG2BODY(memb, name, expl)                                           \
@@ -455,21 +464,28 @@ model_driver_create(KIM::ModelDriverCreate * const model_driver_create,
   int n_param_files;
   model_driver_create->GetNumberOfParameterFiles(&n_param_files);
   if (n_param_files != 2) {
-    // TODO: this is an error, log it.     
+    // Since we cannot use C++11's to_string (which would be dead
+    // easy), we have to this dance instead:
+    ostringstream s;
+    s << n_param_files;
+    LOG_ERROR("This model driver requires exactly two parameter files, but "
+              + s.str() + " were provided.");
     return 1;
   }
 
   const string * settings_filename;
   error = model_driver_create->GetParameterFileName(0, &settings_filename);
   if (error) {
-    // TODO: this is an error, log it.     
+    LOG_ERROR("Error returned by KIM's GetParameterFileName() "
+              "for the first parameter file.");
     return 1;
   }
 
   const string * param_filename;
   error = model_driver_create->GetParameterFileName(1, &param_filename);
   if (error) {
-    // TODO: this is an error, log it.     
+    LOG_ERROR("Error returned by KIM's GetParameterFileName() "
+              "for the second parameter file.");
     return 1;
   }
 
@@ -518,7 +534,7 @@ model_driver_create(KIM::ModelDriverCreate * const model_driver_create,
                                                &doesnt_use_ghost_neighbors);
   error = model_driver_create->SetModelNumbering(KIM::NUMBERING::zeroBased);
   if (error) {
-    // TODO: this is an error, log it.     
+    LOG_ERROR("Error returned by KIM's SetModelNumbering().");
     delete tersoff;
     return 1;
   }
@@ -569,7 +585,7 @@ model_driver_create(KIM::ModelDriverCreate * const model_driver_create,
       KIM::LANGUAGE_NAME::cpp, true,
       reinterpret_cast<KIM::Function *>(kim_destroy));
   if (error) {
-    // TODO: this is an error, log it.     
+    LOG_ERROR("Error returned by KIM's SetRoutinePointer().");
     delete tersoff;
     return 1;
   }

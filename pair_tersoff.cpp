@@ -108,8 +108,7 @@ void PairTersoff::compute(const KIM::ModelComputeArguments&
     error =
       model_compute_arguments.GetNeighborList(0, i, &n_neigh, &neighbors);
     if (error) {
-      //TODO: log      
-      throw runtime_error("compute: Error in "
+      throw runtime_error("Error in "
                           "KIM::ModelComputeArguments.GetNeighborList");
     }
 
