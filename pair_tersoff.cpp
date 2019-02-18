@@ -158,7 +158,7 @@ void PairTersoff::compute(const KIM::ModelComputeArguments&
             atom_energy[j] += 0.5 * evdwl;
         }
 
-        if (forces || compute_process_dEdr) {
+        if (forces || virial || particle_virial || compute_process_dEdr) {
           const double fx = delr_ij[0]*fpair;
           const double fy = delr_ij[1]*fpair;
           const double fz = delr_ij[2]*fpair;
@@ -170,6 +170,41 @@ void PairTersoff::compute(const KIM::ModelComputeArguments&
             (*forces)(j,0) += half_prefactor*fx;
             (*forces)(j,1) += half_prefactor*fy;
             (*forces)(j,2) += half_prefactor*fz;
+          }
+
+          if (virial || particle_virial) {
+            const double vxx = delr_ij[0] * fx;
+            const double vyy = delr_ij[1] * fy;
+            const double vzz = delr_ij[2] * fz;
+            const double vyz = delr_ij[1] * fz;
+            const double vxz = delr_ij[0] * fz;
+            const double vxy = delr_ij[0] * fy;
+
+            if (virial) {
+              virial[0] -= half_prefactor * vxx;
+              virial[1] -= half_prefactor * vyy;
+              virial[2] -= half_prefactor * vzz;
+              virial[3] -= half_prefactor * vyz;
+              virial[4] -= half_prefactor * vxz;
+              virial[5] -= half_prefactor * vxy;
+            }
+
+            if (particle_virial) {
+              (*particle_virial)(i,0) -= 0.5 * vxx;
+              (*particle_virial)(i,1) -= 0.5 * vyy;
+              (*particle_virial)(i,2) -= 0.5 * vzz;
+              (*particle_virial)(i,3) -= 0.5 * vyz;
+              (*particle_virial)(i,4) -= 0.5 * vxz;
+              (*particle_virial)(i,5) -= 0.5 * vxy;
+              if (contributing[j]) {
+                (*particle_virial)(j,0) -= 0.5 * vxx;
+                (*particle_virial)(j,1) -= 0.5 * vyy;
+                (*particle_virial)(j,2) -= 0.5 * vzz;
+                (*particle_virial)(j,3) -= 0.5 * vyz;
+                (*particle_virial)(j,4) -= 0.5 * vxz;
+                (*particle_virial)(j,5) -= 0.5 * vxy;
+              }
+            }
           }
 
           if (compute_process_dEdr) {
@@ -240,7 +275,7 @@ void PairTersoff::compute(const KIM::ModelComputeArguments&
         atom_energy[j] += en;
       }
 
-      if (forces || compute_process_dEdr) {
+      if (forces || virial || particle_virial || compute_process_dEdr) {
         const double fx = delr_ij[0]*fzeta;
         const double fy = delr_ij[1]*fzeta;
         const double fz = delr_ij[2]*fzeta;
@@ -254,6 +289,47 @@ void PairTersoff::compute(const KIM::ModelComputeArguments&
           (*forces)(j,2) -= fz;
         }
 
+        if (virial || particle_virial) {
+          const double vxx = delr_ij[0] * fx;
+          const double vyy = delr_ij[1] * fy;
+          const double vzz = delr_ij[2] * fz;
+          const double vyz = delr_ij[1] * fz; // yz
+          const double vxz = delr_ij[0] * fz; // xz
+          const double vxy = delr_ij[0] * fy; // xy
+
+          if (virial) {
+            virial[0] += vxx;
+            virial[1] += vyy;
+            virial[2] += vzz;
+            virial[3] += vyz;
+            virial[4] += vxz;
+            virial[5] += vxy;
+          }
+
+          if (particle_virial) {
+            const double vxx2 = 0.5 * vxx;
+            const double vyy2 = 0.5 * vyy;
+            const double vzz2 = 0.5 * vzz;
+            const double vyz2 = 0.5 * vyz;
+            const double vxz2 = 0.5 * vxz;
+            const double vxy2 = 0.5 * vxy;
+
+            (*particle_virial)(i,0) += vxx2;
+            (*particle_virial)(i,1) += vyy2;
+            (*particle_virial)(i,2) += vzz2;
+            (*particle_virial)(i,3) += vyz2;
+            (*particle_virial)(i,4) += vxz2;
+            (*particle_virial)(i,5) += vxy2;
+
+            (*particle_virial)(j,0) += vxx2;
+            (*particle_virial)(j,1) += vyy2;
+            (*particle_virial)(j,2) += vzz2;
+            (*particle_virial)(j,3) += vyz2;
+            (*particle_virial)(j,4) += vxz2;
+            (*particle_virial)(j,5) += vxy2;
+          }
+        }
+
         if (compute_process_dEdr) {
           run_process_dEdr(model_compute_arguments,
                            fzeta*r_ij, // dEdr
@@ -265,7 +341,7 @@ void PairTersoff::compute(const KIM::ModelComputeArguments&
 
       // attractive term via loop over k
 
-      if (forces || compute_process_dEdr) {
+      if (forces || virial || particle_virial || compute_process_dEdr) {
         for (int kk = 0; kk != n_neigh; ++kk) {
           if (jj == kk) continue;
           int k = neighbors[kk];
@@ -282,16 +358,6 @@ void PairTersoff::compute(const KIM::ModelComputeArguments&
 
           const double r_ik = sqrt(rsq_ik);
 
-          // r_jk
-          double delr_jk[3];
-          delr_jk[0] = delr_ik[0] - delr_ij[0];
-          delr_jk[1] = delr_ik[1] - delr_ij[1];
-          delr_jk[2] = delr_ik[2] - delr_ij[2];
-          const double rsq_jk = delr_jk[0]*delr_jk[0]
-                              + delr_jk[1]*delr_jk[1]
-                              + delr_jk[2]*delr_jk[2];
-          const double r_jk = sqrt(rsq_jk);
-
           const double R = params3(itype,jtype,ktype).R;
           const double D = params3(itype,jtype,ktype).D;
           const int m = params3(itype,jtype,ktype).m;
@@ -302,22 +368,74 @@ void PairTersoff::compute(const KIM::ModelComputeArguments&
           const double d2 = params3(itype,jtype,ktype).d2;
           const double c2_d2 = params3(itype,jtype,ktype).c2_d2;
 
+          double delr_jk[3];
+          double r_jk;
+          double fi[3], fj[3], fk[3];
           // dEdr_ij not normalized by r_ij, same for dEdr_ik and dEdr_jk
           // note prefactor = -0.5 * fa * ∇bij, as defined above
           double dEdr_ij, dEdr_ik, dEdr_jk;
-          attractive(-prefactor,
+          attractive(prefactor,
                      R, D, m, lam3, gamma, c2, d2, c2_d2, h,
-                     r_ij, r_ik, r_jk,
-                     dEdr_ij, dEdr_ik, dEdr_jk);
+                     r_ij, r_ik, rsq_ij, rsq_ik, delr_ij, delr_ik,
+                     fi, fj, fk,
+                     r_jk, delr_jk,
+                     dEdr_ij, dEdr_ik, dEdr_jk,
+                     forces || virial || particle_virial,
+                     compute_process_dEdr);
 
           if (forces) {
             for (int dim = 0; dim < 3; ++dim) {
-              const double pair_ij = dEdr_ij*delr_ij[dim]/r_ij;
-              const double pair_ik = dEdr_ik*delr_ik[dim]/r_ik;
-              const double pair_jk = dEdr_jk*delr_jk[dim]/r_jk;
-              (*forces)(i,dim) +=  pair_ij + pair_ik;
-              (*forces)(j,dim) += -pair_ij + pair_jk;
-              (*forces)(k,dim) += -pair_ik - pair_jk;
+              (*forces)(i,dim) += fi[dim];
+              (*forces)(j,dim) += fj[dim];
+              (*forces)(k,dim) += fk[dim];
+            }
+          }
+
+          if (virial || particle_virial) {
+            const double vxx = delr_ij[0]*fj[0] + delr_ik[0]*fk[0];
+            const double vyy = delr_ij[1]*fj[1] + delr_ik[1]*fk[1];
+            const double vzz = delr_ij[2]*fj[2] + delr_ik[2]*fk[2];
+            const double vyz = delr_ij[1]*fj[2] + delr_ik[1]*fk[2];
+            const double vxz = delr_ij[0]*fj[2] + delr_ik[0]*fk[2];
+            const double vxy = delr_ij[0]*fj[1] + delr_ik[0]*fk[1];
+
+            if (virial) {
+              virial[0] -= vxx;
+              virial[1] -= vyy;
+              virial[2] -= vzz;
+              virial[3] -= vyz;
+              virial[4] -= vxz;
+              virial[5] -= vxy;
+            }
+
+            if (particle_virial) {
+              const double vxx3 = 1.0/3.0 * vxx;
+              const double vyy3 = 1.0/3.0 * vyy;
+              const double vzz3 = 1.0/3.0 * vzz;
+              const double vyz3 = 1.0/3.0 * vyz;
+              const double vxz3 = 1.0/3.0 * vxz;
+              const double vxy3 = 1.0/3.0 * vxy;
+
+              (*particle_virial)(i,0) -= vxx3;
+              (*particle_virial)(i,1) -= vyy3;
+              (*particle_virial)(i,2) -= vzz3;
+              (*particle_virial)(i,3) -= vyz3;
+              (*particle_virial)(i,4) -= vxz3;
+              (*particle_virial)(i,5) -= vxy3;
+
+              (*particle_virial)(j,0) -= vxx3;
+              (*particle_virial)(j,1) -= vyy3;
+              (*particle_virial)(j,2) -= vzz3;
+              (*particle_virial)(j,3) -= vyz3;
+              (*particle_virial)(j,4) -= vxz3;
+              (*particle_virial)(j,5) -= vxy3;
+
+              (*particle_virial)(k,0) -= vxx3;
+              (*particle_virial)(k,1) -= vyy3;
+              (*particle_virial)(k,2) -= vzz3;
+              (*particle_virial)(k,3) -= vyz3;
+              (*particle_virial)(k,4) -= vxz3;
+              (*particle_virial)(k,5) -= vxy3;
             }
           }
 
@@ -616,13 +734,86 @@ void PairTersoff::attractive(double prefactor,
                              double R, double D, int m, double lam3,
                              double gamma, double c2, double d2, double c2_d2,
                              double h,
-                             double rij, double rik, double rjk,
-                             double &drij, double &drik, double &drjk) const
+                             double rij, double rik,
+                             double rijsq, double riksq,
+                             const double *delrij, const double *delrik,
+                             // output for force/virial
+                             double *fi, double *fj, double *fk,
+                             // output for process_dEdr
+                             double &rjk, double *delrjk,
+                             double &drij, double &drik, double &drjk,
+                             //
+                             bool want_force_or_virial,
+                             bool want_dEdr) const
 {
+  /* This routine is a little bit more complicated now, since we want
+     to both support virial calculation as implemented/defined in
+     LAMMPS and the process_dEdr() callback of KIM. For the former, we
+     need derivatives with regard to the positions and for the latter
+     with regard to the distances. So we have some booleans to toggle
+     what we want to compute. Currently, there might be a slight
+     performance penalty if process_dEdr is requested but not virial.
+     This is to avoid two code paths for certain computations
+     depending on what values were requested.
 
-  ters_zetaterm_d(prefactor,
-                  R, D, m, lam3, gamma, c2, d2, c2_d2, h,
-                  rij,rik,rjk,drij,drik,drjk);
+     Will calculate r_jk (all related quantities) only if want_dEdr is
+     true.
+
+     TODO: can we save some computations and combine both at least partially?   
+  */
+
+  // Values needed by either approach.
+  const double fc = ters_fc(rik,R,D);
+  const double dfc = ters_fc_d(rik,R,D);
+
+  const double tmp =
+    (m == 3)
+    ? pow(lam3 * (rij-rik), 3)  // m == 3
+    : lam3 * (rij-rik);         // m == 1
+
+  const double ex_delr =
+    (tmp > 69.0776) ? 1.0e30 : ( (tmp < -69.0776) ? 0.0 : exp(tmp) );
+
+  const double ex_delr_d =
+    (m == 3)
+    ? 3.0*pow(lam3, 3) * pow(rij-rik, 2)*ex_delr  // m == 3
+    : lam3 * ex_delr;                             // m == 1
+
+  double rij_hat[3];
+  vec3_scale(1.0/rij, delrij, rij_hat); // rij_hat = delrij / rij
+
+  double rik_hat[3];
+  vec3_scale(1.0/rik, delrik, rik_hat); // rik_hat = delrik / rik
+
+  const double cos_theta = vec3_dot(rij_hat, rik_hat);
+
+  const double gijk = ters_gijk(cos_theta, gamma, c2, d2, c2_d2, h);
+  const double gijk_d = ters_gijk_d(cos_theta, gamma, c2, d2, h);
+
+  if (want_force_or_virial) {
+    ters_zetaterm_d_pos(prefactor, fc, dfc, ex_delr, ex_delr_d, cos_theta,
+                        gijk, gijk_d,
+                        rij_hat, rij,
+                        rik_hat, rik,
+                        fi, fj, fk);
+  }
+
+  if (want_dEdr) {
+    // compute jk vector
+    delrjk[0] = delrik[0] - delrij[0];
+    delrjk[1] = delrik[1] - delrij[1];
+    delrjk[2] = delrik[2] - delrij[2];
+    const double rjksq = delrjk[0]*delrjk[0]
+                         + delrjk[1]*delrjk[1]
+                         + delrjk[2]*delrjk[2];
+    rjk = sqrt(rjksq);
+
+    ters_zetaterm_d_dist(-prefactor, fc, dfc, ex_delr, ex_delr_d,
+                         gijk, gijk_d,
+                         rij, rik, rjk,
+                         rijsq, riksq, rjksq,
+                         drij, drik, drjk);
+  }
 }
 
 /* ---------------------------------------------------------------------- */
@@ -693,57 +884,82 @@ double PairTersoff::ters_bij_d(double zeta, double beta, double n,
 
 /* ---------------------------------------------------------------------- */
 
-void PairTersoff::ters_zetaterm_d(double prefactor,
-                                  double R, double D, int m, double lam3,
-                                  double gamma, double c2, double d2,
-                                  double c2_d2, double h,
-                                  double rij, double rik, double rjk,
-                                  double &drij, double &drik, double &drjk) const
+void PairTersoff::ters_zetaterm_d_pos(double prefactor,
+                                      double fc, double dfc,
+                                      double ex_delr, double ex_delr_d,
+                                      double cos_theta,
+                                      double gijk, double gijk_d,
+                                      double *rij_hat, double rij,
+                                      double *rik_hat, double rik,
+                                      double *dri, double *drj, double *drk) const
 {
+  double dcosdri[3], dcosdrj[3], dcosdrk[3];
+  costheta_d(rij_hat,rij, rik_hat,rik, cos_theta, dcosdri,dcosdrj,dcosdrk);
 
-  const double fc = ters_fc(rik,R,D);
-  const double dfc = ters_fc_d(rik,R,D);
+  // compute the derivative wrt Ri
+  // dri = -dfc*gijk*ex_delr*rik_hat;
+  // dri += fc*gijk_d*ex_delr*dcosdri;
+  // dri += fc*gijk*ex_delr_d*(rik_hat - rij_hat);
 
-  double ex_delr,ex_delr_d,tmp;
-  if (m == 3) tmp = pow(lam3 * (rij-rik), 3);
-  else tmp = lam3 * (rij-rik); // m == 1
+  vec3_scale(-dfc*gijk*ex_delr,rik_hat,dri);
+  vec3_scaleadd(fc*gijk_d*ex_delr,dcosdri,dri,dri);
+  vec3_scaleadd(fc*gijk*ex_delr_d,rik_hat,dri,dri);
+  vec3_scaleadd(-fc*gijk*ex_delr_d,rij_hat,dri,dri);
+  vec3_scale(prefactor,dri,dri);
 
-  if (tmp > 69.0776) ex_delr = 1.e30;
-  else if (tmp < -69.0776) ex_delr = 0.0;
-  else ex_delr = exp(tmp);
+  // compute the derivative wrt Rj
+  // drj = fc*gijk_d*ex_delr*dcosdrj;
+  // drj += fc*gijk*ex_delr_d*rij_hat;
 
-  if (m == 3)
-    ex_delr_d = 3.0*pow(lam3, 3) * pow(rij-rik, 2)*ex_delr;
-  else ex_delr_d = lam3 * ex_delr; // m == 1
+  vec3_scale(fc*gijk_d*ex_delr,dcosdrj,drj);
+  vec3_scaleadd(fc*gijk*ex_delr_d,rij_hat,drj,drj);
+  vec3_scale(prefactor,drj,drj);
 
-  double cos_theta, dcosdrij,dcosdrik,dcosdrjk;
-  costheta_d(rij,rik,rjk, cos_theta, dcosdrij, dcosdrik, dcosdrjk);
+  // compute the derivative wrt Rk
+  // drk = dfc*gijk*ex_delr*rik_hat;
+  // drk += fc*gijk_d*ex_delr*dcosdrk;
+  // drk += -fc*gijk*ex_delr_d*rik_hat;
 
-  const double gijk = ters_gijk(cos_theta, gamma, c2, d2, c2_d2, h);
-  const double gijk_d = ters_gijk_d(cos_theta, gamma, c2, d2, h);
+  vec3_scale(dfc*gijk*ex_delr,rik_hat,drk);
+  vec3_scaleadd(fc*gijk_d*ex_delr,dcosdrk,drk,drk);
+  vec3_scaleadd(-fc*gijk*ex_delr_d,rik_hat,drk,drk);
+  vec3_scale(prefactor,drk,drk);
+}
 
+/* ---------------------------------------------------------------------- */
+
+void PairTersoff::ters_zetaterm_d_dist(double prefactor,
+                                       double fc, double dfc,
+                                       double ex_delr, double ex_delr_d,
+                                       double gijk, double gijk_d,
+                                       double rij, double rik, double rjk,
+                                       double rijsq, double riksq, double rjksq,
+                                       double &drij, double &drik, double &drjk) const
+{
+  // dcos_ijk/drij, dcos_ijk/drik, dcos_ijk/drjk
+  const double dcosdrij = (rijsq - riksq + rjksq)/(2*rijsq*rik);
+  const double dcosdrik = (riksq - rijsq + rjksq)/(2*rij*riksq);
+  const double dcosdrjk = -rjk/(rij*rik);
 
   // compute the derivative wrt rij, rik, rjk
   drij = (fc*gijk_d*ex_delr*dcosdrij + fc*gijk*ex_delr_d) * prefactor;
   drik = (dfc*gijk*ex_delr + fc*gijk_d*ex_delr*dcosdrik - fc*gijk*ex_delr_d) * prefactor;
   drjk = (fc*gijk_d*ex_delr*dcosdrjk) * prefactor;
-
 }
 
 /* ---------------------------------------------------------------------- */
 
-void PairTersoff::costheta_d(double rij, double rik, double rjk, double &cos_ijk,
-                             double &drij, double &drik, double &drjk) const
+void PairTersoff::costheta_d(double *rij_hat, double rij,
+                             double *rik_hat, double rik,
+                             double cos_theta,
+                             double *dri, double *drj, double *drk) const
 {
-  const double rijsq = rij*rij;
-  const double riksq = rik*rik;
-  const double rjksq = rjk*rjk;
-
-  // cos_ijk, (i is the apex atom)
-  cos_ijk = (rijsq + riksq - rjksq)/(2*rij*rik);
-  // dcos_ijk/drij, dcos_ijk/drik, dcos_ijk/drjk
-  drij = (rijsq - riksq + rjksq)/(2*rijsq*rik);
-  drik = (riksq - rijsq + rjksq)/(2*rij*riksq);
-  drjk = -rjk/(rij*rik);
+  // first element is devative wrt Ri, second wrt Rj, third wrt Rk
+  vec3_scaleadd(-cos_theta,rij_hat,rik_hat,drj);
+  vec3_scale(1.0/rij,drj,drj);
+  vec3_scaleadd(-cos_theta,rik_hat,rij_hat,drk);
+  vec3_scale(1.0/rik,drk,drk);
+  vec3_add(drj,drk,dri);
+  vec3_scale(-1.0,dri,dri);
 }
 

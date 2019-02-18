@@ -198,8 +198,13 @@ class PairTersoff /*: public Pair*/ {
                   double, double, int, double,
                   double, double, double, double,
                   double,
-                  double, double, double,
-                  double &, double &, double &) const;
+                  double, double,
+                  double, double,
+                  const double*, const double*,
+                  double*, double*, double*,
+                  double &, double*,
+                  double &, double &, double &,
+                  bool, bool) const;
 
   double ters_fc(double, double, double) const;
   double ters_fc_d(double, double, double) const;
@@ -208,14 +213,25 @@ class PairTersoff /*: public Pair*/ {
   double ters_bij(double, double, double, const double[4]) const;
   double ters_bij_d(double, double, double, const double[4]) const;
 
-  void ters_zetaterm_d(double,
-                       double, double, int, double,
-                       double, double, double,
-                       double, double,
-                       double, double, double,
-                       double &, double &, double &) const;
-  void costheta_d(double, double , double,
-                  double &, double &, double &, double &) const;
+  void ters_zetaterm_d_pos(double,
+                           double, double,
+                           double, double,
+                           double,
+                           double, double,
+                           double*, double,
+                           double*, double,
+                           double*, double*, double*) const;
+  void ters_zetaterm_d_dist(double,
+                            double, double,
+                            double, double,
+                            double, double,
+                            double, double, double,
+                            double, double, double,
+                            double &, double &, double &) const;
+  void costheta_d(double*, double,
+                  double*, double,
+                  double,
+                  double*, double*, double*) const;
 
   // inlined functions for efficiency
 
@@ -233,6 +249,27 @@ class PairTersoff /*: public Pair*/ {
     const double numerator = -2.0 * c2 * hcth;
     const double denominator = 1.0/(d2 + hcth*hcth);
     return gamma*numerator*denominator*denominator;
+  }
+
+  inline double vec3_dot(const double x[3], const double y[3]) const {
+    return x[0]*y[0] + x[1]*y[1] + x[2]*y[2];
+  }
+
+  inline void vec3_add(const double x[3], const double y[3],
+                       double * const z) const {
+    z[0] = x[0]+y[0];  z[1] = x[1]+y[1];  z[2] = x[2]+y[2];
+  }
+
+  inline void vec3_scale(const double k, const double x[3],
+                         double y[3]) const {
+    y[0] = k*x[0];  y[1] = k*x[1];  y[2] = k*x[2];
+  }
+
+  inline void vec3_scaleadd(const double k, const double x[3],
+                            const double y[3], double * const z) const {
+    z[0] = k*x[0]+y[0];
+    z[1] = k*x[1]+y[1];
+    z[2] = k*x[2]+y[2];
   }
 
   inline void run_process_dEdr(const KIM::ModelComputeArguments&
