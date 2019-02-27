@@ -182,8 +182,8 @@ compute(const KIM::ModelCompute * const model_compute,
                      energy,
                      atom_energy,
                      forces,
-                     virial,                      
-                     particle_virial,             
+                     virial,
+                     particle_virial,
                      compute_process_dEdr);
   } catch (const exception& e) {
     LOG_ERROR(string("compute: ") + e.what());

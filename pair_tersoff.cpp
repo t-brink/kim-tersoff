@@ -92,7 +92,6 @@ void PairTersoff::compute(const KIM::ModelComputeArguments&
     }
 
   // Reset virial.
-  // TODO: virial not computed, yet                 
   if (virial)
     for (int i = 0; i != 6; ++i)
       virial[i] = 0.0;
@@ -104,6 +103,9 @@ void PairTersoff::compute(const KIM::ModelComputeArguments&
   // loop over full neighbor list of my atoms
 
   for (int i = 0; i != n_atoms; ++i) {
+    // Skip central ghost atoms.
+    if (!contributing[i]) continue;
+
     // Get neighbors.
     error =
       model_compute_arguments.GetNeighborList(0, i, &n_neigh, &neighbors);
