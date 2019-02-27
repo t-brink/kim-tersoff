@@ -572,7 +572,7 @@ model_driver_create(KIM::ModelDriverCreate * const model_driver_create,
     ||
     model_driver_create->SetRoutinePointer(
       KIM::MODEL_ROUTINE_NAME::Refresh,
-      KIM::LANGUAGE_NAME::cpp, true,
+      KIM::LANGUAGE_NAME::cpp, false,
       reinterpret_cast<KIM::Function *>(kim_refresh))
     ||
     model_driver_create->SetRoutinePointer(
