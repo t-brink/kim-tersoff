@@ -1,11 +1,12 @@
 This model driver is based on the LAMMPS implementation of the Tersoff
 potential.  LAMMPS is available at http://lammps.sandia.gov/.
 
-For information about the parameter file and the form of the potential
-see http://lammps.sandia.gov/doc/pair_tersoff.html for now. In
-addition to a LAMMPS-compatible parameter file, a settings file is
-also required. For now, it must just list all used particle types as
-space-separated chemical symbols on the first line.
+A model has to provide two parameter files. The first one is a
+settings file that must just list all used particle types as
+space-separated chemical symbols on the first line. The second file is
+a LAMMPS-compatible parameter file. For information about this
+parameter file and the form of the potential see
+http://lammps.sandia.gov/doc/pair_tersoff.html for now.
 
 The core part of energy/force calculation is adapted from code in
 LAMMPS.  LAMMPS is licensed under GPLv2, which then also applies to
