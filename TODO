@@ -1,3 +1,5 @@
+* Implement writing parameters to file via KIM API
+
 * implement ZBL. But how?
 
    * subclass of PairTersoff (as LAMMPS does)
