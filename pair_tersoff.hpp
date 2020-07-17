@@ -12,7 +12,8 @@
 ------------------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------------
-   Modified for use with KIM by Tobias Brink (2012,2013,2017,2018,2019).
+   Modified for use with KIM by Tobias Brink (2012,2013,2017,2018,2019,
+   2020).
 
    process_dEdr support added by Mingjian Wen (2018)
 ------------------------------------------------------------------------- */
@@ -151,8 +152,10 @@ class PairTersoff /*: public Pair*/ {
               std::map<std::string,int> type_map,
               // Conversion factors.
               double energy_conv,
+              double inv_energy_conv,
               double length_conv,
-              double inv_length_conv);
+              double inv_length_conv,
+              double charge_conv);
   virtual ~PairTersoff();
   void compute(const KIM::ModelComputeArguments&,
                int, const int * const, const int * const,
@@ -170,7 +173,7 @@ class PairTersoff /*: public Pair*/ {
   KIMParams kim_params; // Parameters published to KIM, see above why
                         // we keep two copies.
 
- private:
+ protected:
   int n_spec;                   // number of species
   Array2D<Params2> params2;     // n_spec*n_spec array of parameters
   Array3D<Params3> params3;     // n_spec*n_spec*n_spec array of parameters
@@ -179,11 +182,22 @@ class PairTersoff /*: public Pair*/ {
                                       // name, needed for user-
                                       // friendly error messages
 
+  // This one will only init internal variables, the subclass HAS to
+  // implement parameter reading itself.
+  PairTersoff(int n_spec,
+              std::map<std::string,int> type_map);
+
+  // These need to be replaced or called in variants of the potential.
   void read_params(std::istream&, std::map<std::string,int>,
                    double, double, double);
   void prepare_params();
-  double repulsive(double, double, double, double, double,
-                   bool, double&) const;
+
+  virtual double repulsive(double, double, double, double, double,
+                           bool, double&) const;
+  virtual double ters_fa(double, double, double, double) const;
+  virtual double ters_fa_d(double, double, double, double, double) const;
+
+ private:
   double zeta(double, double,
               int, double, double, double,
               double, double, double, double,
@@ -208,8 +222,6 @@ class PairTersoff /*: public Pair*/ {
 
   double ters_fc(double, double, double) const;
   double ters_fc_d(double, double, double) const;
-  double ters_fa(double, double, double, double) const;
-  double ters_fa_d(double, double, double, double, double) const;
   double ters_bij(double, double, double, const double[4]) const;
   double ters_bij_d(double, double, double, const double[4]) const;
 

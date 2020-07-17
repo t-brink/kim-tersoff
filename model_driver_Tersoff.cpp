@@ -34,6 +34,7 @@
 #include "KIM_ModelDriverHeaders.hpp"
 
 #include "pair_tersoff.hpp"
+#include "pair_tersoff_zbl.hpp"
 #include "ndarray.hpp"
 
 using namespace std;
@@ -363,7 +364,9 @@ init_unit_conv(KIM::ModelDriverCreate * const model_driver_create,
                const KIM::TimeUnit time_unit,
                double& length_conv,
                double& inv_length_conv,
-               double& energy_conv) {
+               double& energy_conv,
+               double& inv_energy_conv,
+               double& charge_conv) {
   int error;
 
   // Length ////////////////////////////////////////////////////////////
@@ -417,9 +420,42 @@ init_unit_conv(KIM::ModelDriverCreate * const model_driver_create,
     return error;
   }
 
+  // Inverse energy ////////////////////////////////////////////////////
+  error = model_driver_create->ConvertUnit(KIM::LENGTH_UNIT::A,
+                                           KIM::ENERGY_UNIT::eV,
+                                           KIM::CHARGE_UNIT::e,
+                                           KIM::TEMPERATURE_UNIT::K,
+                                           KIM::TIME_UNIT::ps,
+                                           length_unit, energy_unit,
+                                           charge_unit,
+                                           temperature_unit, time_unit,
+                                           0.0, -1.0, 0.0, 0.0, 0.0,
+                                           &inv_energy_conv);
+  if (error) {
+    LOG_ERROR("Error returned by KIM's ConvertUnit() when trying to "
+              "get inverse energy units.");
+    return error;
+  }
+
+  // Charge ////////////////////////////////////////////////////////////
+  error = model_driver_create->ConvertUnit(KIM::LENGTH_UNIT::A,
+                                           KIM::ENERGY_UNIT::eV,
+                                           KIM::CHARGE_UNIT::e,
+                                           KIM::TEMPERATURE_UNIT::K,
+                                           KIM::TIME_UNIT::ps,
+                                           length_unit, energy_unit,
+                                           charge_unit,
+                                           temperature_unit, time_unit,
+                                           0.0, 0.0, 1.0, 0.0, 0.0,
+                                           &charge_conv);
+  if (error) {
+    LOG_ERROR("Error returned by KIM's ConvertUnit() when trying to "
+              "get charge units.");
+    return error;
+  }
+
   // KIM wants to know what happened, I guess. /////////////////////////
-  error = model_driver_create->SetUnits(length_unit, energy_unit,
-                                        KIM::CHARGE_UNIT::unused,
+  error = model_driver_create->SetUnits(length_unit, energy_unit, charge_unit,
                                         KIM::TEMPERATURE_UNIT::unused,
                                         KIM::TIME_UNIT::unused);
   if (error) {
@@ -464,13 +500,27 @@ init_unit_conv(KIM::ModelDriverCreate * const model_driver_create,
     return 1;                                                                \
   }
 
+#define REGZBL(memb, name, expl)                                             \
+  error =                                                                    \
+    model_driver_create->SetParameterPointer(tersoff->kim_params.size2,      \
+                                             &tersoff->kim_params_zbl.memb(0,0),\
+                                             #name,                          \
+                                             "The two-body parameter "       \
+                                             #name " " #expl ". "            \
+                                             "Size N*N, where N is the "     \
+                                             "number of species supported "  \
+                                             "by the model. Storage in "     \
+                                             "row-major order by ascending " \
+                                             "species code.");               \
+  if (error) {                                                               \
+    return 1;                                                                \
+  }
+
 template<typename T>
 static int
 reg_params(KIM::ModelDriverCreate * const model_driver_create,
            T * const tersoff) {
   int error;
-
-  // TODO: register ZBL parameters *if* we are doing ZBL!                  
 
   // Two-body parameters.
   REG2BODY(A, A, in units of energy);
@@ -494,6 +544,24 @@ reg_params(KIM::ModelDriverCreate * const model_driver_create,
 
   return 0;
 }
+
+template<>
+int
+reg_params<PairTersoffZBL>(KIM::ModelDriverCreate * const model_driver_create,
+                           PairTersoffZBL * const tersoff) {
+  int error = reg_params<PairTersoff>(model_driver_create, tersoff);
+  if (error) {
+    return error;
+  }
+
+  REGZBL(Z_i, Zi, (unitless));
+  REGZBL(Z_j, Zj, (unitless));
+  REGZBL(ZBLcut, ZBLcut, in units of length.);
+  REGZBL(ZBLexpscale, ZBLexpscale, in units of inverse length.);
+
+  return 0;
+}
+
 
 #undef REG2BODY
 #undef REG3BODY
@@ -577,7 +645,6 @@ model_driver_create(KIM::ModelDriverCreate * const model_driver_create,
                                       *param_filename,
                                       n_spec,
                                       type_map);
-  /*
   case zbl:
     return finish_create<PairTersoffZBL>(model_driver_create,
                                          length_unit,
@@ -588,7 +655,6 @@ model_driver_create(KIM::ModelDriverCreate * const model_driver_create,
                                          *param_filename,
                                          n_spec,
                                          type_map);
-  */
   default:
     LOG_ERROR("Internal error: unknown potential variant.");
     return 1;
@@ -613,12 +679,16 @@ finish_create(KIM::ModelDriverCreate * const model_driver_create,
   double length_conv;
   double inv_length_conv;
   double energy_conv;
+  double inv_energy_conv;
+  double charge_conv;
   error = init_unit_conv(model_driver_create,
                          length_unit, energy_unit, charge_unit,
                          temperature_unit, time_unit,
                          length_conv,
                          inv_length_conv,
-                         energy_conv);
+                         energy_conv,
+                         inv_energy_conv,
+                         charge_conv);
   if (error) {
     return error; // already logged.
   }
@@ -628,7 +698,9 @@ finish_create(KIM::ModelDriverCreate * const model_driver_create,
   T* tersoff;
   try {
     tersoff = new T(param_filename, n_spec, type_map,
-                    energy_conv, length_conv, inv_length_conv);
+                    energy_conv, inv_energy_conv,
+                    length_conv, inv_length_conv,
+                    charge_conv);
   } catch (const exception& e) {
     LOG_ERROR(string("model_driver_create: ") + e.what());
     return 1; // error

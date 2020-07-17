@@ -14,7 +14,8 @@
 /* ----------------------------------------------------------------------
    Contributing author: Aidan Thompson (SNL)
 
-   Modified for use with KIM by Tobias Brink (2012,2013,2014,2017,2018,2019).
+   Modified for use with KIM by Tobias Brink (2012,2013,2014,2017,2018,2019,
+   2020).
 
    process_dEdr support added by Mingjian Wen (2018)
 ------------------------------------------------------------------------- */
@@ -35,8 +36,11 @@ PairTersoff::PairTersoff(const string& parameter_file,
                          map<string,int> type_map,
                          // Conversion factors.
                          double energy_conv,
+                         double, // unused inv_energy_conv
                          double length_conv,
-                         double inv_length_conv)
+                         double inv_length_conv,
+                         double // unused charge_conv
+                         )
   : kim_params(n_spec), n_spec(n_spec),
     params2(n_spec, n_spec), params3(n_spec, n_spec, n_spec)
 {
@@ -49,6 +53,19 @@ PairTersoff::PairTersoff(const string& parameter_file,
   // Read parameter file.
   std::fstream f(parameter_file.c_str(), std::ios_base::in);
   read_params(f, type_map, energy_conv, length_conv, inv_length_conv);
+}
+
+PairTersoff::PairTersoff(int n_spec,
+                         map<string,int> type_map)
+  : kim_params(n_spec), n_spec(n_spec),
+    params2(n_spec, n_spec), params3(n_spec, n_spec, n_spec)
+{
+  // Prepare index -> element name mapping.
+  for (map<string,int>::const_iterator i = type_map.begin();
+       i != type_map.end();
+       ++i) {
+    to_spec[i->second] = i->first;
+  }
 }
 
 
