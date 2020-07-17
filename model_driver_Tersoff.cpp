@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2012,2013,2014,2018,2019 Tobias Brink
+  Copyright (c) 2012,2013,2014,2018,2019,2020 Tobias Brink
 
   Permission is hereby granted, free of charge, to any person obtaining
   a copy of this software and associated documentation files (the
@@ -59,6 +59,25 @@ extern "C" {
 // copying a bool. So be it, I'll define a constant, which is false
 // since we do use ghost particles' neighbors.
 static const int doesnt_use_ghost_neighbors = 0;
+
+// LOCAL DEFINITIONS ///////////////////////////////////////////////////
+
+enum PotentialVariant { standard, zbl };
+
+// Helper to trim a string. For some reason C++ doesn't provide this.
+string trim(const string &s)
+{
+    string::const_iterator it = s.begin();
+    while (it != s.end() && isspace(*it))
+        it++;
+
+    string::const_reverse_iterator rit = s.rbegin();
+    while (rit.base() != it && isspace(*rit))
+        rit++;
+
+    return string(it, rit.base());
+}
+
 
 // WRAPPERS AND INTERFACE TO KIM ///////////////////////////////////////
 
@@ -262,7 +281,8 @@ static int destroy(KIM::ModelDestroy * const model_destroy) {
 static int
 read_settings(KIM::ModelDriverCreate * const model_driver_create,
               const string& settings_filename,
-              int& n_spec, map<string,int>& type_map) {
+              int& n_spec, map<string,int>& type_map,
+              PotentialVariant& potential_variant) {
   ifstream settings_file(settings_filename.c_str()); // passing the std::string
                                                      // is C++11
   bool got_line;
@@ -301,6 +321,26 @@ read_settings(KIM::ModelDriverCreate * const model_driver_create,
     ++species_id;
   }
   n_spec = type_map.size();
+
+  // See if there is a variant (e.g. ZBL) requested ////////////////////
+  potential_variant = standard;
+  string variant_line;
+  got_line = getline(settings_file, variant_line);
+  if (got_line) {
+    variant_line = trim(variant_line);
+    if (!variant_line.empty()) {
+      if (variant_line == "ZBL") {
+        potential_variant = zbl;
+      } else {
+        LOG_ERROR("Illegal potential variant ("
+                  + variant_line
+                  + ") specified in second line of settings file ("
+                  + settings_filename
+                  + ")");
+        return 1;
+      }
+    }
+  }
 
   return 0;
 }
@@ -492,8 +532,10 @@ model_driver_create(KIM::ModelDriverCreate * const model_driver_create,
   // Get number and name of species. ///////////////////////////////////
   int n_spec = 0;
   map<string,int> type_map;
+  PotentialVariant potential_variant;      
   error =
-    read_settings(model_driver_create, *settings_filename, n_spec, type_map);
+    read_settings(model_driver_create, *settings_filename,
+                  n_spec, type_map, potential_variant);
   if (error) {
     return error; // already logged.
   }
