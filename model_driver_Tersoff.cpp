@@ -65,7 +65,7 @@ static const int doesnt_use_ghost_neighbors = 0;
 enum PotentialVariant { standard, zbl };
 
 // Helper to trim a string. For some reason C++ doesn't provide this.
-string trim(const string &s)
+static string trim(const string &s)
 {
     string::const_iterator it = s.begin();
     while (it != s.end() && isspace(*it))
@@ -125,10 +125,11 @@ compute_arguments_create(const KIM::ModelCompute * const, // unused
 
 #define KIM_LOGGER_OBJECT_NAME model_compute
 
+template<typename T> // the type T should be a subclass of PairTersoff
 static int
 compute(const KIM::ModelCompute * const model_compute,
         const KIM::ModelComputeArguments * const model_compute_arguments) {
-  PairTersoff* tersoff;
+  T* tersoff;
   model_compute->GetModelBufferPointer(reinterpret_cast<void **>(&tersoff));
 
   // Unpack data.
@@ -211,14 +212,16 @@ compute(const KIM::ModelCompute * const model_compute,
 
   return 0;
 }
+
 #undef KIM_LOGGER_OBJECT_NAME
 
 
 #define KIM_LOGGER_OBJECT_NAME model_refresh
 
+template<typename T> // the type T should be a subclass of PairTersoff
 static int
 refresh(KIM::ModelRefresh * const model_refresh) {
-  PairTersoff* tersoff;
+  T* tersoff;
   model_refresh->GetModelBufferPointer(reinterpret_cast<void **>(&tersoff));
 
   // Recalculate internal derived values.
@@ -241,6 +244,7 @@ refresh(KIM::ModelRefresh * const model_refresh) {
 
 
 /*
+template<typename T> // the type T should be a subclass of PairTersoff
 static int
 write_parameterized_model(.....) {     
   TODO: would be super-nice, but have to find example    
@@ -259,8 +263,10 @@ compute_arguments_destroy(const KIM::ModelCompute * const, // all ununsed
 
 #define KIM_LOGGER_OBJECT_NAME model_destroy
 
-static int destroy(KIM::ModelDestroy * const model_destroy) {
-  PairTersoff* tersoff;
+template<typename T> // the type T should be a subclass of PairTersoff
+static int
+destroy(KIM::ModelDestroy * const model_destroy) {
+  T* tersoff;
   model_destroy->GetModelBufferPointer(reinterpret_cast<void **>(&tersoff));
 
   if (tersoff != NULL) {
@@ -458,10 +464,13 @@ init_unit_conv(KIM::ModelDriverCreate * const model_driver_create,
     return 1;                                                                \
   }
 
+template<typename T>
 static int
 reg_params(KIM::ModelDriverCreate * const model_driver_create,
-           PairTersoff * const tersoff) {
+           T * const tersoff) {
   int error;
+
+  // TODO: register ZBL parameters *if* we are doing ZBL!                  
 
   // Two-body parameters.
   REG2BODY(A, A, in units of energy);
@@ -490,6 +499,21 @@ reg_params(KIM::ModelDriverCreate * const model_driver_create,
 #undef REG3BODY
 
 #define KIM_LOGGER_OBJECT_NAME model_driver_create
+
+// For readability, finish_create() should follow
+// model_driver_create(), so we define its interface here already.
+template<typename T>
+static int
+finish_create(KIM::ModelDriverCreate * const,
+              const KIM::LengthUnit,
+              const KIM::EnergyUnit,
+              const KIM::ChargeUnit,
+              const KIM::TemperatureUnit,
+              const KIM::TimeUnit,
+              const string&,
+              const int,
+              map<string,int>&);
+
 
 int
 model_driver_create(KIM::ModelDriverCreate * const model_driver_create,
@@ -532,7 +556,7 @@ model_driver_create(KIM::ModelDriverCreate * const model_driver_create,
   // Get number and name of species. ///////////////////////////////////
   int n_spec = 0;
   map<string,int> type_map;
-  PotentialVariant potential_variant;      
+  PotentialVariant potential_variant;
   error =
     read_settings(model_driver_create, *settings_filename,
                   n_spec, type_map, potential_variant);
@@ -540,8 +564,49 @@ model_driver_create(KIM::ModelDriverCreate * const model_driver_create,
     return error; // already logged.
   }
 
-  // Get variant of potential (e.g. ZBL). //////////////////////////////
-  //TODO (will go into read_settings, too)  
+  // Since different potential variants use different classes (ported
+  // from LAMMPS), we call a templated function next.
+  switch (potential_variant) {
+  case standard:
+    return finish_create<PairTersoff>(model_driver_create,
+                                      length_unit,
+                                      energy_unit,
+                                      charge_unit,
+                                      temperature_unit,
+                                      time_unit,
+                                      *param_filename,
+                                      n_spec,
+                                      type_map);
+  /*
+  case zbl:
+    return finish_create<PairTersoffZBL>(model_driver_create,
+                                         length_unit,
+                                         energy_unit,
+                                         charge_unit,
+                                         temperature_unit,
+                                         time_unit,
+                                         *param_filename,
+                                         n_spec,
+                                         type_map);
+  */
+  default:
+    LOG_ERROR("Internal error: unknown potential variant.");
+    return 1;
+  }
+}
+
+template<typename T> // the type T should be a subclass of PairTersoff
+static int
+finish_create(KIM::ModelDriverCreate * const model_driver_create,
+              const KIM::LengthUnit length_unit,
+              const KIM::EnergyUnit energy_unit,
+              const KIM::ChargeUnit charge_unit,
+              const KIM::TemperatureUnit temperature_unit,
+              const KIM::TimeUnit time_unit,
+              const string& param_filename,
+              const int n_spec,
+              map<string,int>& type_map) {
+  int error;
 
   // Init unit conversion factors. /////////////////////////////////////
   // We are using LAMMPS "metal" units, i.e., eV and Ångstroms.
@@ -560,10 +625,10 @@ model_driver_create(KIM::ModelDriverCreate * const model_driver_create,
 
 
   // Init the core class. //////////////////////////////////////////////
-  PairTersoff* tersoff;
+  T* tersoff;
   try {
-    tersoff = new PairTersoff(*param_filename, n_spec, type_map,
-                              energy_conv, length_conv, inv_length_conv);
+    tersoff = new T(param_filename, n_spec, type_map,
+                    energy_conv, length_conv, inv_length_conv);
   } catch (const exception& e) {
     LOG_ERROR(string("model_driver_create: ") + e.what());
     return 1; // error
@@ -592,13 +657,13 @@ model_driver_create(KIM::ModelDriverCreate * const model_driver_create,
   // prototypes.
   KIM::ModelComputeArgumentsCreateFunction * kim_ca_create
     = &compute_arguments_create;
-  KIM::ModelComputeFunction * kim_compute = &compute;
-  KIM::ModelRefreshFunction * kim_refresh = &refresh;
+  KIM::ModelComputeFunction * kim_compute = &compute<T>;
+  KIM::ModelRefreshFunction * kim_refresh = &refresh<T>;
   //KIM::ModelWriteParameterizedModelFunction * kim_write_params
-  //  = &write_parameterized_model;
+  //  = &write_parameterized_model<T>;
   KIM::ModelComputeArgumentsDestroyFunction * kim_ca_destroy
     = &compute_arguments_destroy;
-  KIM::ModelDestroyFunction * kim_destroy = &destroy;
+  KIM::ModelDestroyFunction * kim_destroy = &destroy<T>;
 
   // Register the function pointers.
   error =
@@ -631,7 +696,6 @@ model_driver_create(KIM::ModelDriverCreate * const model_driver_create,
     delete tersoff;
     return 1;
   }
-
 
   return 0;
 }
