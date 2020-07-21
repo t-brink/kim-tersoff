@@ -87,6 +87,7 @@ void PairTersoffZBL::read_params(istream& infile, std::map<string,int> type_map,
   double c, d; // Those are only stored in the published KIM parameters
                // since they are not needed for computation, we use
                // precomputed c², d² and c²/d² instead.
+  double Z_i, Z_j; // Equivalent for these.
   while (buffer >> type_i
                 >> type_j
                 >> type_k
@@ -104,8 +105,8 @@ void PairTersoffZBL::read_params(istream& infile, std::map<string,int> type_map,
                 >> temp_params3.D
                 >> temp_params2.lam1
                 >> temp_params2.A
-                >> temp_params_zbl_2.Z_i
-                >> temp_params_zbl_2.Z_j
+                >> Z_i
+                >> Z_j
                 >> temp_params_zbl_2.ZBLcut
                 >> temp_params_zbl_2.ZBLexpscale) {
     // Convert m to integer.
@@ -153,6 +154,8 @@ void PairTersoffZBL::read_params(istream& infile, std::map<string,int> type_map,
       temp_params2.D = temp_params3.D;
       params2(i,j) = temp_params2;
       params_zbl_2(i,j) = temp_params_zbl_2;
+      kim_params_zbl.Z_i(i,j) = Z_i;
+      kim_params_zbl.Z_j(i,j) = Z_j;
     }
     params3(i,j,k) = temp_params3;
     kim_params.c(i,j,k) = c;
@@ -181,12 +184,12 @@ void PairTersoffZBL::prepare_params() {
     for (int j = 0; j != n_spec; ++j) {
       string type_j = to_spec.at(j);
       ParamsZBL2& temp_params_zbl_2 = params_zbl_2(i,j);
-      if (temp_params_zbl_2.Z_i < 1)
+      if (kim_params_zbl.Z_i(i,j) < 1)
         throw runtime_error("Parameter Z_i ("
                             + type_i +
                             "-" + type_j +
                             ") may not be smaller than one.");
-      if (temp_params_zbl_2.Z_j < 1)
+      if (kim_params_zbl.Z_j(i,j) < 1)
         throw runtime_error("Parameter Z_j ("
                             + type_i +
                             "-" + type_j +
@@ -203,10 +206,10 @@ void PairTersoffZBL::prepare_params() {
                             ") may not be smaller than one.");
       // Pre-compute values.
       temp_params_zbl_2.a =
-        0.8854 * global_a_0 / (pow(temp_params_zbl_2.Z_i, 0.23)
-                               + pow(temp_params_zbl_2.Z_j, 0.23));
+        0.8854 * global_a_0 / (pow(kim_params_zbl.Z_i(i,j), 0.23)
+                               + pow(kim_params_zbl.Z_j(i,j), 0.23));
       temp_params_zbl_2.premult =
-        (temp_params_zbl_2.Z_i * temp_params_zbl_2.Z_j * global_e_sq)
+        (kim_params_zbl.Z_i(i,j) * kim_params_zbl.Z_j(i,j) * global_e_sq)
         /
         (4.0 * pi * global_epsilon_0);
     }

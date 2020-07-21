@@ -40,13 +40,13 @@ class PairTersoffZBL : public PairTersoff {
   // copy between the KIM-published parameters and this internal data.
   struct ParamsZBL2 {
     // Two-body parameters.
-    double Z_i; // XXX not needed    
-    double Z_j; // XXX not needed     
     double ZBLcut;
     double ZBLexpscale;
     // Pre-computed.
     double a;       // 0.8854 * a0 / (Z_i^0.23 + Z_j^0.23)
     double premult; // Z_i * Z_j * e^2 / (4 * pi * epsilon0)
+    // Not used in computation.
+    //double Z_i, Z_j;
   };
   struct KIMParamsZBL {
     explicit KIMParamsZBL(int N) // Number of particle types
@@ -56,14 +56,20 @@ class PairTersoffZBL : public PairTersoff {
     void from_params(const Array2D<ParamsZBL2>& p2) {
       for (int i = 0; i < Z_i.extent(0); ++i)
         for (int j = 0; j < Z_i.extent(1); ++j) {
-          
+          //Z_i(i,j) = p2(i,j).Z_i; // Those are not kept there,
+          //Z_j(i,j) = p2(i,j).Z_j; // but only derived in "a" and "premult"
+          ZBLcut(i,j) = p2(i,j).ZBLcut;
+          ZBLexpscale(i,j) = p2(i,j).ZBLexpscale;
         }
     };
     // Copy data to a Params array.
     void to_params(Array2D<ParamsZBL2>& p2) const {
       for (int i = 0; i < Z_i.extent(0); ++i)
         for (int j = 0; j < Z_i.extent(1); ++j) {
-          
+          //p2(i,j).Z_i = Z_i(i,j); // Those are not kept there,
+          //p2(i,j).Z_i = Z_i(i,j); // but only derived in "a" and "premult"
+          p2(i,j).ZBLcut = ZBLcut(i,j);
+          p2(i,j).ZBLexpscale = ZBLexpscale(i,j);
         }
     }
     Array2D<double> Z_i, Z_j;

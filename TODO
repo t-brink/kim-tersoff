@@ -1,24 +1,3 @@
 * Implement writing parameters to file via KIM API
 
-* implement ZBL. But how?
-
-   * subclass of PairTersoff (as LAMMPS does)
-
-   * examine the first parameter file to see if ZBL is wanted
-
-   * produce the correct class in the init routine
-
-   * then, make a template out of the "destroy", "reinit", and
-     "compute" functions (rather their v2 equivalents and any
-     additional ones needed); the template parameter is the class
-     PairTersoff or PairTersoffZBL
-
-   * make real, static functions that just call the correct template
-     and pass those to KIM (again the init routine has to have the
-     "if"s to decide which one)
-
-   PROBLEM: avoid virtual methods! (not really a problem if we do convert
-            the opaque pointer passed by KIM to the correct object in,
-            e.g., the "compute" routine)
-
-   PROBLEM 2: now this also needs to be ported to process_dEdr...
+* test ZBL
