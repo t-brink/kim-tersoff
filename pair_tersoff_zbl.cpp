@@ -44,7 +44,8 @@ PairTersoffZBL::PairTersoffZBL(const string& parameter_file,
     global_epsilon_0(0.00552635
                      * charge_conv * charge_conv
                      * inv_energy_conv * inv_length_conv),
-    global_e(1.0 * charge_conv)
+    global_e(1.0 * charge_conv),
+    global_e_sq(global_e * global_e)
 {
   // Read parameter file.
   std::fstream f(parameter_file.c_str(), std::ios_base::in);
@@ -172,84 +173,143 @@ void PairTersoffZBL::update_params() {
   prepare_params();
 }
 
-/* ---------------------------------------------------------------------- * /
+void PairTersoffZBL::prepare_params() {
+  PairTersoff::prepare_params();
 
-void PairTersoffZBL::repulsive(Param *param, double rsq, double &fforce,
-                               int eflag, double &eng)
+  for (int i = 0; i != n_spec; ++i) {
+    string type_i = to_spec.at(i);
+    for (int j = 0; j != n_spec; ++j) {
+      string type_j = to_spec.at(j);
+      ParamsZBL2& temp_params_zbl_2 = params_zbl_2(i,j);
+      if (temp_params_zbl_2.Z_i < 1)
+        throw runtime_error("Parameter Z_i ("
+                            + type_i +
+                            "-" + type_j +
+                            ") may not be smaller than one.");
+      if (temp_params_zbl_2.Z_j < 1)
+        throw runtime_error("Parameter Z_j ("
+                            + type_i +
+                            "-" + type_j +
+                            ") may not be smaller than one.");
+      if (temp_params_zbl_2.ZBLcut < 0)
+        throw runtime_error("Parameter ZBLcut ("
+                            + type_i +
+                            "-" + type_j +
+                            ") may not be smaller than one.");
+      if (temp_params_zbl_2.ZBLexpscale < 0)
+        throw runtime_error("Parameter ZBLexpscale ("
+                            + type_i +
+                            "-" + type_j +
+                            ") may not be smaller than one.");
+      // Pre-compute values.
+      temp_params_zbl_2.a =
+        0.8854 * global_a_0 / (pow(temp_params_zbl_2.Z_i, 0.23)
+                               + pow(temp_params_zbl_2.Z_j, 0.23));
+      temp_params_zbl_2.premult =
+        (temp_params_zbl_2.Z_i * temp_params_zbl_2.Z_j * global_e_sq)
+        /
+        (4.0 * pi * global_epsilon_0);
+    }
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+
+double PairTersoffZBL::repulsive(double r, double fc, double fc_d,
+                                 int itype, int jtype,
+                                 bool eflag, double &eng) const
 {
-  double r,tmp_fc,tmp_fc_d,tmp_exp;
+  const double lam1 = params2(itype,jtype).lam1;
+  const double A = params2(itype,jtype).A;
 
   // Tersoff repulsive portion
 
-  r = sqrt(rsq);
-  tmp_fc = ters_fc(r,param);
-  tmp_fc_d = ters_fc_d(r,param);
-  tmp_exp = exp(-param->lam1 * r);
-  double fforce_ters = param->biga * tmp_exp * (tmp_fc_d - tmp_fc*param->lam1);
-  double eng_ters = tmp_fc * param->biga * tmp_exp;
+  const double tmp_exp = exp(-lam1 * r);
+  const double eng_ters = fc * A * tmp_exp;
+  const double fforce_ters = A * tmp_exp * (fc_d - fc*lam1) / r;
 
   // ZBL repulsive portion
 
-  double esq = square(global_e);
-  double a_ij = (0.8854*global_a_0) /
-    (pow(param->Z_i,0.23) + pow(param->Z_j,0.23));
-  double premult = (param->Z_i * param->Z_j * esq)/(4.0*MY_PI*global_epsilon_0);
-  double r_ov_a = r/a_ij;
-  double phi = 0.1818*exp(-3.2*r_ov_a) + 0.5099*exp(-0.9423*r_ov_a) +
-    0.2802*exp(-0.4029*r_ov_a) + 0.02817*exp(-0.2016*r_ov_a);
-  double dphi = (1.0/a_ij) * (-3.2*0.1818*exp(-3.2*r_ov_a) -
-                              0.9423*0.5099*exp(-0.9423*r_ov_a) -
-                              0.4029*0.2802*exp(-0.4029*r_ov_a) -
-                              0.2016*0.02817*exp(-0.2016*r_ov_a));
-  double fforce_ZBL = premult*-phi/rsq + premult*dphi/r;
-  double eng_ZBL = premult*(1.0/r)*phi;
+  const double a_ij    = params_zbl_2(itype,jtype).a;
+  const double premult = params_zbl_2(itype,jtype).premult;
+  const double ZBLexpscale = params_zbl_2(itype,jtype).ZBLexpscale;
+  const double ZBLcut = params_zbl_2(itype,jtype).ZBLcut;
+
+  const double r_over_a = r / a_ij;
+  const double exp1 = 0.1818  * exp(-3.2    * r_over_a);
+  const double exp2 = 0.5099  * exp(-0.9423 * r_over_a);
+  const double exp3 = 0.2802  * exp(-0.4029 * r_over_a);
+  const double exp4 = 0.02817 * exp(-0.2016 * r_over_a);
+  const double phi = exp1 + exp2 + exp3 + exp4;
+  const double dphi = (1.0/a_ij) * (-3.2   * exp1 -
+                                    0.9423 * exp2 -
+                                    0.4029 * exp3 -
+                                    0.2016 * exp4);
+  const double eng_ZBL = premult * (1.0/r) * phi;
+  const double fforce_ZBL = premult * -phi / pow2(r) + premult * dphi / r;
 
   // combine two parts with smoothing by Fermi-like function
 
-  fforce = -(-F_fermi_d(r,param) * eng_ZBL +
-             (1.0 - F_fermi(r,param))*fforce_ZBL +
-             F_fermi_d(r,param)*eng_ters + F_fermi(r,param)*fforce_ters) / r;
+  const double f_F = F_fermi(r, ZBLexpscale, ZBLcut);
+  const double f_F_d = F_fermi_d(r, ZBLexpscale, ZBLcut);
 
-  if (eflag)
-    eng = (1.0 - F_fermi(r,param))*eng_ZBL + F_fermi(r,param)*eng_ters;
+  if (eflag) {
+    eng = (1.0 - f_F) * eng_ZBL + f_F * eng_ters;
+  }
+
+  return -(-f_F_d * eng_ZBL +
+           (1.0 - f_F) * fforce_ZBL +
+           f_F_d * eng_ters + f_F * fforce_ters) / r;
 }
 
-/* ---------------------------------------------------------------------- * /
+/* ---------------------------------------------------------------------- */
 
-double PairTersoffZBL::ters_fa(double r, Param *param)
+double PairTersoffZBL::ters_fa(double r, double fc,
+                               int itype, int jtype) const
 {
-  if (r > param->bigr + param->bigd) return 0.0;
-  return -param->bigb * exp(-param->lam2 * r) * ters_fc(r,param) *
-    F_fermi(r,param);
+  if (fc == 0.0) return 0.0;
+
+  const double B = params2(itype,jtype).B;
+  const double lam2 = params2(itype,jtype).lam2;
+  const double ZBLexpscale = params_zbl_2(itype,jtype).ZBLexpscale;
+  const double ZBLcut = params_zbl_2(itype,jtype).ZBLcut;
+
+  return -B * exp(-lam2 * r) * fc * F_fermi(r, ZBLexpscale, ZBLcut);
 }
 
-/* ---------------------------------------------------------------------- * /
+/* ---------------------------------------------------------------------- */
 
-double PairTersoffZBL::ters_fa_d(double r, Param *param)
+double PairTersoffZBL::ters_fa_d(double r, double fc, double fc_d,
+                                 int itype, int jtype) const
 {
-  if (r > param->bigr + param->bigd) return 0.0;
-  return param->bigb * exp(-param->lam2 * r) *
-    (param->lam2 * ters_fc(r,param) * F_fermi(r,param) -
-     ters_fc_d(r,param) * F_fermi(r,param) - ters_fc(r,param) *
-     F_fermi_d(r,param));
+  if (fc == 0.0) return 0.0;
+
+  const double B = params2(itype,jtype).B;
+  const double lam2 = params2(itype,jtype).lam2;
+  const double ZBLexpscale = params_zbl_2(itype,jtype).ZBLexpscale;
+  const double ZBLcut = params_zbl_2(itype,jtype).ZBLcut;
+
+  const double f_F = F_fermi(r, ZBLexpscale, ZBLcut);
+  const double f_F_d = F_fermi_d(r, ZBLexpscale, ZBLcut);
+
+  return B * exp(-lam2 * r) * (lam2 * fc * f_F - fc_d * f_F - fc * f_F_d);
 }
 
 /* ----------------------------------------------------------------------
    Fermi-like smoothing function
-------------------------------------------------------------------------- * /
+------------------------------------------------------------------------- */
 
-double PairTersoffZBL::F_fermi(double r, Param *param)
+double PairTersoffZBL::F_fermi(double r, double ZBLexpscale, double ZBLcut) const
 {
-  return 1.0 / (1.0 + exp(-param->ZBLexpscale*(r-param->ZBLcut)));
+  return 1.0 / (1.0 + exp(-ZBLexpscale * (r - ZBLcut)));
 }
 
 /* ----------------------------------------------------------------------
    Fermi-like smoothing function derivative with respect to r
-------------------------------------------------------------------------- * /
+------------------------------------------------------------------------- */
 
-double PairTersoffZBL::F_fermi_d(double r, Param *param)
+double PairTersoffZBL::F_fermi_d(double r, double ZBLexpscale, double ZBLcut) const
 {
-  return param->ZBLexpscale*exp(-param->ZBLexpscale*(r-param->ZBLcut)) /
-    square(1.0 + exp(-param->ZBLexpscale*(r-param->ZBLcut)));
+  return ZBLexpscale * exp(-ZBLexpscale * (r - ZBLcut)) /
+         pow2(1.0 + exp(-ZBLexpscale * (r - ZBLcut)));
 }
-*/   

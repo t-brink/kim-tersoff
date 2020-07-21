@@ -159,12 +159,9 @@ void PairTersoff::compute(const KIM::ModelComputeArguments&
 
       // two-body interactions, skip half of them unless j is a ghost atom
       if (!contributing[j] || (i < j)) {
-        const double lam1 = params2(itype,jtype).lam1;
-        const double A = params2(itype,jtype).A;
-
         double evdwl; // Particle energy.
         const double fpair =
-          repulsive(r_ij, fc_ij, dfc_ij, lam1, A, eflag, evdwl);
+          repulsive(r_ij, fc_ij, dfc_ij, itype, jtype, eflag, evdwl);
 
         const double half_prefactor = contributing[j] ? 1.0 : 0.5;
 
@@ -273,16 +270,10 @@ void PairTersoff::compute(const KIM::ModelComputeArguments&
 
       // pairwise force due to zeta
 
-      const double B = params2(itype,jtype).B;
-      const double lam2 = params2(itype,jtype).lam2;
-      const double beta = params2(itype,jtype).beta;
-      const double n = params2(itype,jtype).n;
-      const double* n_precomp = params2(itype,jtype).n_precomp;
-
       double prefactor; // -0.5 * fa * ∇bij
       double evdwl; // Particle energy.
       const double fzeta =
-        force_zeta(r_ij, fc_ij, dfc_ij, zeta_ij, B, lam2, beta, n, n_precomp,
+        force_zeta(r_ij, fc_ij, dfc_ij, zeta_ij, itype, jtype,
                    prefactor, eflag, evdwl);
 
       if (energy)
@@ -693,9 +684,15 @@ void PairTersoff::prepare_params() {
 /* ---------------------------------------------------------------------- */
 
 double PairTersoff::repulsive(double r, double fc, double fc_d,
-                              double lam1, double A,
+                              int itype, int jtype,
                               bool eflag, double &eng) const
 {
+  // In this case, we look up the parameters inside the function,
+  // since derived classes (e.g., for ZBL support) need more
+  // parameters.
+  const double lam1 = params2(itype,jtype).lam1;
+  const double A = params2(itype,jtype).A;
+
   const double tmp_exp = exp(-lam1 * r);
   if (eflag) eng = fc * A * tmp_exp;
   return -A * tmp_exp * (fc_d - fc*lam1) / r;
@@ -715,7 +712,7 @@ double PairTersoff::zeta(double rij, double rik,
                            ) / (rij * rik);
 
   double arg;
-  if (m == 3) arg = pow(lam3 * (rij-rik), 3);
+  if (m == 3) arg = pow3(lam3 * (rij-rik));
   else arg = lam3 * (rij-rik); // m == 1
 
   double ex_delr;
@@ -729,14 +726,19 @@ double PairTersoff::zeta(double rij, double rik,
 /* ---------------------------------------------------------------------- */
 
 double PairTersoff::force_zeta(double r, double fc, double fc_d, double zeta_ij,
-                               double B, double lam2,
-                               double beta, double n,
-                               const double n_precomp[4],
+                               int itype, int jtype,
                                double &prefactor,
                                bool eflag, double &eng) const
 {
-  const double fa = ters_fa(r, fc, B, lam2);
-  const double fa_d = ters_fa_d(r, fc, fc_d, B, lam2);
+  // In this case, we look up the parameters inside the function,
+  // since derived classes (e.g., for ZBL support) need more
+  // parameters.
+  const double beta = params2(itype,jtype).beta;
+  const double n = params2(itype,jtype).n;
+  const double* n_precomp = params2(itype,jtype).n_precomp;
+
+  const double fa = ters_fa(r, fc, itype, jtype);
+  const double fa_d = ters_fa_d(r, fc, fc_d, itype, jtype);
   const double bij = ters_bij(zeta_ij, beta, n, n_precomp);
   prefactor = -0.5*fa * ters_bij_d(zeta_ij, beta, n, n_precomp);
   if (eflag) eng = 0.5*bij*fa;
@@ -787,7 +789,7 @@ void PairTersoff::attractive(double prefactor,
 
   const double tmp =
     (m == 3)
-    ? pow(lam3 * (rij-rik), 3)  // m == 3
+    ? pow3(lam3 * (rij-rik))    // m == 3
     : lam3 * (rij-rik);         // m == 1
 
   const double ex_delr =
@@ -795,7 +797,7 @@ void PairTersoff::attractive(double prefactor,
 
   const double ex_delr_d =
     (m == 3)
-    ? 3.0*pow(lam3, 3) * pow(rij-rik, 2)*ex_delr  // m == 3
+    ? 3.0*pow3(lam3) * pow2(rij-rik)*ex_delr      // m == 3
     : lam3 * ex_delr;                             // m == 1
 
   double rij_hat[3];
@@ -856,18 +858,32 @@ double PairTersoff::ters_fc_d(double r, double R, double D) const
 /* ---------------------------------------------------------------------- */
 
 double PairTersoff::ters_fa(double r, double fc,
-                            double B, double lam2) const
+                            int itype, int jtype) const
 {
   if (fc == 0.0) return 0.0;
+
+  // In this case, we look up the parameters inside the function,
+  // since derived classes (e.g., for ZBL support) need more
+  // parameters.
+  const double B = params2(itype,jtype).B;
+  const double lam2 = params2(itype,jtype).lam2;
+
   return -B * exp(-lam2 * r) * fc;
 }
 
 /* ---------------------------------------------------------------------- */
 
 double PairTersoff::ters_fa_d(double r, double fc, double fc_d,
-                              double B, double lam2) const
+                              int itype, int jtype) const
 {
   if (fc == 0.0) return 0.0;
+
+  // In this case, we look up the parameters inside the function,
+  // since derived classes (e.g., for ZBL support) need more
+  // parameters.
+  const double B = params2(itype,jtype).B;
+  const double lam2 = params2(itype,jtype).lam2;
+
   return B * exp(-lam2 * r) * (lam2 * fc - fc_d);
 }
 

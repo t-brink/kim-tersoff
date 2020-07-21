@@ -40,12 +40,13 @@ class PairTersoffZBL : public PairTersoff {
   // copy between the KIM-published parameters and this internal data.
   struct ParamsZBL2 {
     // Two-body parameters.
-    double Z_i;
-    double Z_j;
+    double Z_i; // XXX not needed    
+    double Z_j; // XXX not needed     
     double ZBLcut;
     double ZBLexpscale;
     // Pre-computed.
-    
+    double a;       // 0.8854 * a0 / (Z_i^0.23 + Z_j^0.23)
+    double premult; // Z_i * Z_j * e^2 / (4 * pi * epsilon0)
   };
   struct KIMParamsZBL {
     explicit KIMParamsZBL(int N) // Number of particle types
@@ -83,7 +84,7 @@ class PairTersoffZBL : public PairTersoff {
                  double charge_conv);
   virtual ~PairTersoffZBL();
 
-  void update_params(); // Copy from KIM-published parameters to internal.
+  virtual void update_params(); // Copy from KIM-published parameters to internal.
 
   KIMParamsZBL kim_params_zbl; // ZBL parameters published to KIM, see
                                // above why we keep two copies.
@@ -93,19 +94,24 @@ class PairTersoffZBL : public PairTersoff {
 
   void read_params(std::istream&, std::map<std::string,int>,
                    double, double, double);
-  //void prepare_params();  TODO: possibly needed for precompute        
+  void prepare_params();
 
-  /*     
-  virtual double repulsive(double, double, double, double, double,
+  virtual double repulsive(double, double, double, int, int,
                            bool, double&) const;
-  virtual double ters_fa(double, double, double, double) const;
-  virtual double ters_fa_d(double, double, double, double, double) const;
-  */
+  virtual double ters_fa(double, double, int, int) const;
+  virtual double ters_fa_d(double, double, double, int, int) const;
 
  private:
   const double global_a_0;       // Bohr radius for Coulomb repulsion
   const double global_epsilon_0; // permittivity of vacuum for Coulomb repulsion
   const double global_e;         // proton charge (negative of electron charge)
+
+  // Derived, cached values.
+  const double global_e_sq;
+
+  // Fermi-like smoothing from ZBL to Tersoff.
+  double F_fermi(double, double, double) const;
+  double F_fermi_d(double, double, double) const;
 };
 
 }

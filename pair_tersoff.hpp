@@ -163,7 +163,7 @@ class PairTersoff /*: public Pair*/ {
                double*, double*, Array2D<double>*,
                double*, Array2D<double>*,
                bool) const;
-  void update_params(); // Copy from KIM-published parameters to internal.
+  virtual void update_params(); // Copy from KIM-published parameters to internal.
   double cutoff() const {
     return max_cutoff;
   }
@@ -192,10 +192,10 @@ class PairTersoff /*: public Pair*/ {
                    double, double, double);
   void prepare_params();
 
-  virtual double repulsive(double, double, double, double, double,
+  virtual double repulsive(double, double, double, int, int,
                            bool, double&) const;
-  virtual double ters_fa(double, double, double, double) const;
-  virtual double ters_fa_d(double, double, double, double, double) const;
+  virtual double ters_fa(double, double, int, int) const;
+  virtual double ters_fa_d(double, double, double, int, int) const;
 
  private:
   double zeta(double, double,
@@ -204,9 +204,7 @@ class PairTersoff /*: public Pair*/ {
               double,
               const double*, const double*) const;
   double force_zeta(double, double, double, double,
-                    double, double,
-                    double, double,
-                    const double[4],
+                    int, int,
                     double&, bool, double&) const;
   void attractive(double,
                   double, double, int, double,
