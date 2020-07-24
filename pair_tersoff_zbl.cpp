@@ -229,7 +229,7 @@ double PairTersoffZBL::repulsive(double r, double fc, double fc_d,
 
   const double tmp_exp = exp(-lam1 * r);
   const double eng_ters = fc * A * tmp_exp;
-  const double fforce_ters = A * tmp_exp * (fc_d - fc*lam1) / r;
+  const double fforce_ters = A * tmp_exp * (fc_d - fc*lam1); // note, will be multiplied with -1/r at the end.
 
   // ZBL repulsive portion
 
