@@ -173,6 +173,20 @@ class PairTersoff /*: public Pair*/ {
   KIMParams kim_params; // Parameters published to KIM, see above why
                         // we keep two copies.
 
+  // Accessors to get the supported species.
+  int get_n_spec() const {
+    return n_spec;
+  }
+
+  std::string get_spec_str(int i) const { // Return empty string if not found.
+    std::map<int,std::string>::const_iterator search = to_spec.find(i);
+    if (search != to_spec.end()) {
+      return search->second;
+    } else {
+      return "";
+    }
+  }
+
  protected:
   int n_spec;                   // number of species
   Array2D<Params2> params2;     // n_spec*n_spec array of parameters

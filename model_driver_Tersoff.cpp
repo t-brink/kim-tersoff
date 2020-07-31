@@ -29,6 +29,7 @@
 #include <utility>
 #include <fstream>
 #include <sstream>
+#include <typeinfo>
 
 #include "KIM_LogMacros.hpp"
 #include "KIM_ModelDriverHeaders.hpp"
@@ -244,13 +245,98 @@ refresh(KIM::ModelRefresh * const model_refresh) {
 #undef KIM_LOGGER_OBJECT_NAME
 
 
-/*
+
+// Implementations of writing parameters to files for different
+// variants of the model driver.
+template<typename T>
+static void
+write_parameterized_model_write_params(ofstream&, T*);
+
+template<>
+void
+write_parameterized_model_write_params<PairTersoff>(ofstream& outfile,
+                                                    PairTersoff* tersoff) {
+  // TODO     
+}
+
+template<>
+void
+write_parameterized_model_write_params<PairTersoffZBL>(ofstream& outfile,
+                                                       PairTersoffZBL* tersoff) {
+  // TODO     
+}
+
+
+#define KIM_LOGGER_OBJECT_NAME model_write_param
+
 template<typename T> // the type T should be a subclass of PairTersoff
 static int
-write_parameterized_model(.....) {     
-  TODO: would be super-nice, but have to find example    
+write_parameterized_model(
+    const KIM::ModelWriteParameterizedModel * const model_write_param
+) {
+  T* tersoff;
+  model_write_param->GetModelBufferPointer(reinterpret_cast<void **>(&tersoff));
+
+  const string * directory;
+  model_write_param->GetPath(&directory);
+
+  const string * model_name;
+  model_write_param->GetModelName(&model_name);
+
+  // Write the settings file.
+  const string settings_fname = *model_name + ".settings";
+  model_write_param->SetParameterFileName(settings_fname);
+
+  const string settings_path = *directory + "/" + settings_fname;
+  {
+    ofstream outfile(settings_path.c_str());
+    if (!outfile) {
+      LOG_ERROR("Unable to open settings file ("
+                + settings_path
+                + ") for writing");
+      return 1;
+    }
+    int n_spec = tersoff->get_n_spec();
+    for (int i = 0; i < n_spec; ++i) {
+      if (i > 0) outfile << " ";
+      outfile << tersoff->get_spec_str(i); // If the lookup fails, it returns
+                                           // an empty string. This should not
+                                           // happen, so I'll ignore this case
+                                           // here.
+    }
+    outfile << endl;
+    // Variant of the model driver.
+    if (typeid(T) == typeid(PairTersoff)) {
+      outfile << endl; // Empty for the standard Tersoff model.
+    } else if (typeid(T) == typeid(PairTersoffZBL)) {
+      outfile << "ZBL" << endl;
+    } else {
+      LOG_ERROR("The model buffer has an unknown type. This is a bug in "
+                "the model driver.");
+      return 1;
+    }
+  }
+
+  // Write the parameter file.
+  const string parameter_fname = *model_name + ".params";
+  model_write_param->SetParameterFileName(parameter_fname);
+
+  const string parameter_path = *directory + "/" + parameter_fname;
+  {
+    ofstream outfile(parameter_path.c_str());
+    if (!outfile) {
+      LOG_ERROR(string("Unable to open parameter file (")
+                + parameter_path
+                + ") for writing");
+      return 1;
+    }
+    write_parameterized_model_write_params<T>(outfile, tersoff);
+  }
+
+  return 0;
 }
-*/
+
+#undef KIM_LOGGER_OBJECT_NAME
 
 static int
 compute_arguments_destroy(const KIM::ModelCompute * const, // all ununsed
@@ -731,8 +817,8 @@ finish_create(KIM::ModelDriverCreate * const model_driver_create,
     = &compute_arguments_create;
   KIM::ModelComputeFunction * kim_compute = &compute<T>;
   KIM::ModelRefreshFunction * kim_refresh = &refresh<T>;
-  //KIM::ModelWriteParameterizedModelFunction * kim_write_params
-  //  = &write_parameterized_model<T>;
+  KIM::ModelWriteParameterizedModelFunction * kim_write_params
+    = &write_parameterized_model<T>;
   KIM::ModelComputeArgumentsDestroyFunction * kim_ca_destroy
     = &compute_arguments_destroy;
   KIM::ModelDestroyFunction * kim_destroy = &destroy<T>;
@@ -753,6 +839,11 @@ finish_create(KIM::ModelDriverCreate * const model_driver_create,
       KIM::MODEL_ROUTINE_NAME::Refresh,
       KIM::LANGUAGE_NAME::cpp, false,
       reinterpret_cast<KIM::Function *>(kim_refresh))
+    ||
+    model_driver_create->SetRoutinePointer(
+      KIM::MODEL_ROUTINE_NAME::WriteParameterizedModel,
+      KIM::LANGUAGE_NAME::cpp, false,
+      reinterpret_cast<KIM::Function *>(kim_write_params))
     ||
     model_driver_create->SetRoutinePointer(
       KIM::MODEL_ROUTINE_NAME::ComputeArgumentsDestroy,
