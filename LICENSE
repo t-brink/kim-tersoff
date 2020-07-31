@@ -22,8 +22,9 @@ under the MIT license as follows:
   OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
   WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-The files pair_tersoff.hpp and pair_tersoff.cpp are taken from LAMMPS,
-which is licensed under the GPLv2 as follows:
+The files pair_tersoff.hpp, pair_tersoff.cpp, pair_tersoff_zbl.hpp,
+and pair_tersoff_zbl.cpp are taken from LAMMPS, which is licensed
+under the GPLv2 as follows:
 
   GNU GENERAL PUBLIC LICENSE
 
