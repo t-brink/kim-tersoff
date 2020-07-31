@@ -25,6 +25,7 @@
 #include <cmath>
 #include <fstream>
 #include <sstream>
+#include <iomanip>
 
 using namespace model_driver_Tersoff;
 using namespace std;
@@ -576,9 +577,9 @@ void PairTersoff::update_params() {
 void PairTersoff::prepare_params() {
   max_cutoff = 0.0;
   for (int i = 0; i != n_spec; ++i) {
-    string type_i = to_spec.at(i);
+    const string type_i = to_spec.at(i);
     for (int j = 0; j != n_spec; ++j) {
-      string type_j = to_spec.at(j);
+      const string type_j = to_spec.at(j);
       Params2& temp_params2 = params2(i,j);
       if (temp_params2.n < 0)
         throw runtime_error("Parameter n ("
@@ -618,7 +619,7 @@ void PairTersoff::prepare_params() {
       temp_params2.n_precomp[2] = 1.0 / temp_params2.n_precomp[1];
       temp_params2.n_precomp[3] = 1.0 / temp_params2.n_precomp[0];
       for (int k = 0; k != n_spec; ++k) {
-        string type_k = to_spec.at(k);
+        const string type_k = to_spec.at(k);
         Params3& temp_params3 = params3(i,j,k);
         // Check values of parameters.
         if (kim_params.c(i,j,k) < 0)
@@ -676,6 +677,48 @@ void PairTersoff::prepare_params() {
         temp_params3.c2 = kim_params.c(i,j,k) * kim_params.c(i,j,k);
         temp_params3.d2 = kim_params.d(i,j,k) * kim_params.d(i,j,k);
         temp_params3.c2_d2 = temp_params3.c2 / temp_params3.d2;
+      }
+    }
+  }
+}
+
+void PairTersoff::write_params(ofstream& outfile) {
+  // Set maximum precision.
+  outfile << setprecision(16);
+  // Write.
+  for (int i = 0; i < n_spec; ++i) {
+    const string type_i = to_spec.at(i);
+    for (int j = 0; j < n_spec; ++j) {
+      const string type_j = to_spec.at(j);
+      for (int k = 0; k < n_spec; ++k) {
+        const string type_k = to_spec.at(k);
+        outfile << type_i << " " << type_j << " " << type_k << " ";
+        outfile << kim_params.m(i,j,k) << " ";
+        outfile << kim_params.gamma(i,j,k) << " ";
+        outfile << kim_params.lam3(i,j,k) << " ";
+        outfile << kim_params.c(i,j,k) << " ";
+        outfile << kim_params.d(i,j,k) << " ";
+        outfile << kim_params.h(i,j,k) << " ";
+        if (j == k) {
+          // Two-body parameters are only taken from j == k, so in
+          // order to make that clear, we write zeros otherwise.
+          outfile << kim_params.n(i,j) << " ";
+          outfile << kim_params.beta(i,j) << " ";
+          outfile << kim_params.lam2(i,j) << " ";
+          outfile << kim_params.B(i,j) << " ";
+        } else {
+          outfile << "0 0 0 0 ";
+        }
+        outfile << kim_params.R(i,j,k) << " ";
+        outfile << kim_params.D(i,j,k) << " ";
+        if (j == k) {
+          // Two-body parameters are only taken from j == k, so in
+          // order to make that clear, we write zeros otherwise.
+          outfile << kim_params.lam1(i,j) << " ";
+          outfile << kim_params.A(i,j) << endl;
+        } else {
+          outfile << "0 0" << endl;
+        }
       }
     }
   }

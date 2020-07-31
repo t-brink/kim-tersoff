@@ -22,6 +22,7 @@
 #include <cmath>
 #include <fstream>
 #include <sstream>
+#include <iomanip>
 
 using namespace model_driver_Tersoff;
 using namespace std;
@@ -180,9 +181,9 @@ void PairTersoffZBL::prepare_params() {
   PairTersoff::prepare_params();
 
   for (int i = 0; i != n_spec; ++i) {
-    string type_i = to_spec.at(i);
+    const string type_i = to_spec.at(i);
     for (int j = 0; j != n_spec; ++j) {
-      string type_j = to_spec.at(j);
+      const string type_j = to_spec.at(j);
       ParamsZBL2& temp_params_zbl_2 = params_zbl_2(i,j);
       if (kim_params_zbl.Z_i(i,j) < 1)
         throw runtime_error("Parameter Z_i ("
@@ -215,6 +216,53 @@ void PairTersoffZBL::prepare_params() {
     }
   }
 }
+
+void PairTersoffZBL::write_params(ofstream& outfile) {
+  // Set maximum precision.
+  outfile << setprecision(16);
+  // Write.
+  for (int i = 0; i < n_spec; ++i) {
+    const string type_i = to_spec.at(i);
+    for (int j = 0; j < n_spec; ++j) {
+      const string type_j = to_spec.at(j);
+      for (int k = 0; k < n_spec; ++k) {
+        const string type_k = to_spec.at(k);
+        outfile << type_i << " " << type_j << " " << type_k << " ";
+        outfile << kim_params.m(i,j,k) << " ";
+        outfile << kim_params.gamma(i,j,k) << " ";
+        outfile << kim_params.lam3(i,j,k) << " ";
+        outfile << kim_params.c(i,j,k) << " ";
+        outfile << kim_params.d(i,j,k) << " ";
+        outfile << kim_params.h(i,j,k) << " ";
+        if (j == k) {
+          // Two-body parameters are only taken from j == k, so in
+          // order to make that clear, we write zeros otherwise.
+          outfile << kim_params.n(i,j) << " ";
+          outfile << kim_params.beta(i,j) << " ";
+          outfile << kim_params.lam2(i,j) << " ";
+          outfile << kim_params.B(i,j) << " ";
+        } else {
+          outfile << "0 0 0 0 ";
+        }
+        outfile << kim_params.R(i,j,k) << " ";
+        outfile << kim_params.D(i,j,k) << " ";
+        if (j == k) {
+          // Two-body parameters are only taken from j == k, so in
+          // order to make that clear, we write zeros otherwise.
+          outfile << kim_params.lam1(i,j) << " ";
+          outfile << kim_params.A(i,j) << " ";
+          outfile << kim_params_zbl.Z_i(i,j) << " ";
+          outfile << kim_params_zbl.Z_j(i,j) << " ";
+          outfile << kim_params_zbl.ZBLcut(i,j) << " ";
+          outfile << kim_params_zbl.ZBLexpscale(i,j) << endl;
+        } else {
+          outfile << "0 0 0 0 0 0" << endl;
+        }
+      }
+    }
+  }
+}
+
 
 /* ---------------------------------------------------------------------- */
 

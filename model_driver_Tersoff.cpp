@@ -246,27 +246,6 @@ refresh(KIM::ModelRefresh * const model_refresh) {
 
 
 
-// Implementations of writing parameters to files for different
-// variants of the model driver.
-template<typename T>
-static void
-write_parameterized_model_write_params(ofstream&, T*);
-
-template<>
-void
-write_parameterized_model_write_params<PairTersoff>(ofstream& outfile,
-                                                    PairTersoff* tersoff) {
-  // TODO     
-}
-
-template<>
-void
-write_parameterized_model_write_params<PairTersoffZBL>(ofstream& outfile,
-                                                       PairTersoffZBL* tersoff) {
-  // TODO     
-}
-
-
 #define KIM_LOGGER_OBJECT_NAME model_write_param
 
 template<typename T> // the type T should be a subclass of PairTersoff
@@ -330,7 +309,7 @@ write_parameterized_model(
                 + ") for writing");
       return 1;
     }
-    write_parameterized_model_write_params<T>(outfile, tersoff);
+    tersoff->write_params(outfile);
   }
 
   return 0;

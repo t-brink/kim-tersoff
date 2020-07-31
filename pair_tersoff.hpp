@@ -173,6 +173,8 @@ class PairTersoff /*: public Pair*/ {
   KIMParams kim_params; // Parameters published to KIM, see above why
                         // we keep two copies.
 
+  void write_params(std::ofstream&); // Write parameters in the correct format.
+
   // Accessors to get the supported species.
   int get_n_spec() const {
     return n_spec;

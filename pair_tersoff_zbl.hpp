@@ -95,6 +95,8 @@ class PairTersoffZBL : public PairTersoff {
   KIMParamsZBL kim_params_zbl; // ZBL parameters published to KIM, see
                                // above why we keep two copies.
 
+  void write_params(std::ofstream&); // Write parameters in the correct format.
+
  protected:
   Array2D<ParamsZBL2> params_zbl_2; // n_spec*n_spec array of ZBL parameters
 

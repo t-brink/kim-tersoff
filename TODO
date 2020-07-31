@@ -1,3 +1,11 @@
-* Implement writing parameters to file via KIM API
+* Benchmark with and w/o ZBL and find the reason why this is so much slower
+  via KIM. Therefore, make 1000 random atoms, calculate energy/force 1000
+  times; no neighbor list recalc or anything else!
 
-* test ZBL
+    * LAMMPS native (make sure to calculate pe/atom!)
+
+    * LAMMPS + KIM
+
+    * mytest + KIM
+
+    * hacked together to bypass KIM with my code
