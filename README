@@ -26,6 +26,6 @@ variants of Tersoff-type potentials to the input file format expected
 by this model driver (and LAMMPS).  There are also some example input
 files for the script.
 
-Author: Tobias Brink <brink@mm.tu-darmstadt.de>
+Author: Tobias Brink <t.brink@mpie.de>
 
 Thanks to Mingjian Wen for adding process_dEdr support.
