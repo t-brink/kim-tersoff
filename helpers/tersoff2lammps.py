@@ -323,17 +323,23 @@ elif cp["settings"]["style"] == "tersoff1989full":
                         f.write(" ".join(str(i) for i in [Zi, Zj,
                                                           ZBLcut, ZBLexpscale]))
                     f.write("\n")
-elif cp["settings"]["style"] == "albe2002":
+elif cp["settings"]["style"] in ("albe2002", "juslin2005"):
+    is_juslin2005 = (cp["settings"]["style"] == "juslin2005")
     elements = set()
     terms = set()
     params = {}
     # Find all elements.
     for section in cp:
         if section in ("settings", "DEFAULT"): continue
+        elems = section.split("-")
+        if (len(elems) == 3 and is_juslin2005): continue
         try:
-            elem1, elem2 = section.split("-")
+            elem1, elem2 = elems
         except ValueError:
-            print("section headings must follow the format element-element")
+            if is_juslin2005:
+                print("section headings must follow the format element-element[-element]")
+            else:
+                print("section headings must follow the format element-element")
             sys.exit(3)
         pair = frozenset([elem1, elem2])
         if pair in terms:
@@ -360,13 +366,21 @@ elif cp["settings"]["style"] == "albe2002":
             for elem2 in sorted(elements):
                 for elem3 in sorted(elements):
                     gamma = params[frozenset([elem1, elem3])]["gamma"]
-                    lambda3 = 2 * float(params[frozenset([elem1, elem3])]["mu"])
+                    if not is_juslin2005:
+                        lambda3 = 2 * float(params[frozenset([elem1, elem3])]["mu"])
+                    else:
+                        # Three-body-term with default of 0.0.
+                        lambda3 = cp.get(f"{elem1}-{elem2}-{elem3}", "alpha", fallback=0.0)
                     c = params[frozenset([elem1, elem3])]["c"]
                     d = params[frozenset([elem1, elem3])]["d"]
                     costheta0 = -float(params[frozenset([elem1, elem3])]["h"])
                     if elem2 == elem3:
                         n = 1
-                        beta = 1
+                        if not is_juslin2005:
+                            beta = 1
+                        else:
+                            # Three-body-term with default of 1.0.
+                            beta = cp.get(f"{elem1}-{elem2}-{elem3}", "omega", fallback=1.0)
                         _beta = float(params[frozenset([elem1, elem2])]["beta"])
                         _S = float(params[frozenset([elem1, elem2])]["S"])
                         _D0 = float(params[frozenset([elem1, elem2])]["D0"])
