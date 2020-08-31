@@ -123,6 +123,15 @@ if cp["settings"]["style"] == "tersoff1988":
                          for i in [elem, elem, elem,
                                    m, gamma, lambda3, c, d, costheta0,
                                    n, beta, lambda2, B, R, D, lambda1, A]))
+        # Do we have ZBL parameters?
+        if "Z" in sec:
+            Zi = sec["Z"]
+            Zj = sec["Z"]
+            ZBLcut = sec["ZBLcut"]
+            ZBLexpscale = sec["ZBLexpscale"]
+            f.write(" ")
+            f.write(" ".join(str(i) for i in [Zi, Zj,
+                                              ZBLcut, ZBLexpscale]))
         f.write("\n")
 elif cp["settings"]["style"] == "tersoff1989":
     elements = set()
@@ -194,7 +203,6 @@ elif cp["settings"]["style"] == "tersoff1989":
                                     n, beta, lambda2, B,
                                     R, D, lambda1, A
                                 ]))
-                        f.write("\n")
                     else:
                         chi = float(params[frozenset([elem1, elem2])]["chi"])
                         if elem2 != elem3:
@@ -223,7 +231,20 @@ elif cp["settings"]["style"] == "tersoff1989":
                                     n, beta, lambda2, B,
                                     R, D, lambda1, A
                                 ]))
-                        f.write("\n")
+                    # Do we have ZBL parameters?
+                    sec12 = params[frozenset([elem1, elem2])]
+                    if "Z" in sec12:
+                        if elem2 != elem3:
+                            Zi = Zj = ZBLcut = ZBLexpscale = 0
+                        else:
+                            Zi = sec1["Z"]
+                            Zj = sec2["Z"]
+                            ZBLcut = sec12["ZBLcut"]
+                            ZBLexpscale = sec12["ZBLexpscale"]
+                        f.write(" ")
+                        f.write(" ".join(str(i) for i in [Zi, Zj,
+                                                          ZBLcut, ZBLexpscale]))
+                    f.write("\n")
 elif cp["settings"]["style"] == "tersoff1989full":
     elements = set()
     terms = set()
@@ -264,6 +285,7 @@ elif cp["settings"]["style"] == "tersoff1989full":
                 for elem3 in sorted(elements):
                     sec = params[frozenset([elem1, elem2])]
                     sec11 = params[frozenset([elem1, elem1])]
+                    sec22 = params[frozenset([elem2, elem2])]
                     sec13 = params[frozenset([elem1, elem3])]
                     # Cutoff.
                     R_ = float(sec13["R"])
@@ -288,6 +310,18 @@ elif cp["settings"]["style"] == "tersoff1989full":
                                 n, beta, lambda2, B,
                                 R, D, lambda1, A
                             ]))
+                    # Do we have ZBL parameters?
+                    if "Z" in sec:
+                        if elem2 != elem3:
+                            Zi = Zj = ZBLcut = ZBLexpscale = 0
+                        else:
+                            Zi = sec11["Z"]
+                            Zj = sec22["Z"]
+                            ZBLcut = sec["ZBLcut"]
+                            ZBLexpscale = sec["ZBLexpscale"]
+                        f.write(" ")
+                        f.write(" ".join(str(i) for i in [Zi, Zj,
+                                                          ZBLcut, ZBLexpscale]))
                     f.write("\n")
 elif cp["settings"]["style"] == "albe2002":
     elements = set()
@@ -352,6 +386,21 @@ elif cp["settings"]["style"] == "albe2002":
                                     c, d, costheta0, n, beta, lambda2, B,
                                     R, D, lambda1, A
                             ]))
+                    # Do we have ZBL parameters?
+                    sec12 = params[frozenset([elem1, elem2])]
+                    sec11 = params[frozenset([elem1, elem1])]
+                    sec22 = params[frozenset([elem2, elem2])]
+                    if "Z" in sec12:
+                        if elem2 != elem3:
+                            Zi = Zj = ZBLcut = ZBLexpscale = 0
+                        else:
+                            Zi = sec11["Z"]
+                            Zj = sec22["Z"]
+                            ZBLcut = sec12["ZBLcut"]
+                            ZBLexpscale = sec12["ZBLexpscale"]
+                        f.write(" ")
+                        f.write(" ".join(str(i) for i in [Zi, Zj,
+                                                          ZBLcut, ZBLexpscale]))
                     f.write("\n")
 else:
     print("Unsupported style '{}'".format(c["settings"]["style"]))
