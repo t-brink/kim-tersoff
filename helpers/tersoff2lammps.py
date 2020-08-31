@@ -403,5 +403,5 @@ elif cp["settings"]["style"] == "albe2002":
                                                           ZBLcut, ZBLexpscale]))
                     f.write("\n")
 else:
-    print("Unsupported style '{}'".format(c["settings"]["style"]))
+    print("Unsupported style '{}'".format(cp["settings"]["style"]))
     sys.exit(1)
