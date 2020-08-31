@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Copyright (c) 2015 Tobias Brink
+# Copyright (c) 2015,2020 Tobias Brink
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -57,6 +57,19 @@ h                     h                         mu
 lam3 (A^-1)           R (A)                     Rcut (A)
 R (A)                 S (A)                     Dcut (A)
 D (A)                 chi (cross-terms only)
+
+
+Variants:
+
+tersoff1989full: instead of giving chi for the cross terms, provide
+                 the full parameter set.
+
+
+ZBL:
+
+If the parameters Z, ZBLcut, and ZBLexpscale are given (see LAMMPS
+documentation for their meaning), the file will be compatible with
+LAMMPS' tersoff/zbl variant.
 
 """
 
@@ -211,6 +224,71 @@ elif cp["settings"]["style"] == "tersoff1989":
                                     R, D, lambda1, A
                                 ]))
                         f.write("\n")
+elif cp["settings"]["style"] == "tersoff1989full":
+    elements = set()
+    terms = set()
+    params = {}
+    # Find all elements.
+    for section in cp:
+        if section in ("settings", "DEFAULT"): continue
+        try:
+            elem1, elem2 = section.split("-")
+        except ValueError:
+            print("section headings must follow the format element-element")
+            sys.exit(3)
+        pair = frozenset([elem1, elem2])
+        if pair in terms:
+            print("Section is double: {}".format(section))
+            sys.exit(5)
+        elements.add(elem1)
+        elements.add(elem2)
+        terms.add(pair)
+        #
+        params[pair] = cp[section]
+    # Check for completeness.
+    for elem1 in elements:
+        for elem2 in elements:
+            p = frozenset([elem1, elem2])
+            if p not in params:
+                print("Parameters missing for {}-{}.".format(elem1, elem2))
+                sys.exit(6)
+    # Write.
+    with open(sys.argv[2], "w") as f:
+        if "comment" in cp["settings"]:
+            f.write("# {}\n\n".format(cp["settings"]["comment"]))
+        m = 3
+        gamma = 1
+        lambda3 = 0
+        for elem1 in sorted(elements):
+            for elem2 in sorted(elements):
+                for elem3 in sorted(elements):
+                    sec = params[frozenset([elem1, elem2])]
+                    sec11 = params[frozenset([elem1, elem1])]
+                    sec13 = params[frozenset([elem1, elem3])]
+                    # Cutoff.
+                    R_ = float(sec13["R"])
+                    S_ = float(sec13["S"])
+                    R = (R_ + S_) / 2
+                    D = (S_ - R_) / 2
+                    # Other params.
+                    if elem2 != elem3:
+                        n = beta = lambda2 = B = lambda1 = A = 0
+                    else:
+                        n = sec11["n"]
+                        beta = sec11["beta"]
+                        lambda2 = sec["mu"]
+                        B = sec["B"]
+                        lambda1 = sec["lambda"]
+                        A = sec["A"]
+                    f.write(
+                        " ".join(
+                            str(i) for i in [
+                                elem1, elem2, elem3, m, gamma, lambda3,
+                                sec11["c"], sec11["d"], sec11["h"],
+                                n, beta, lambda2, B,
+                                R, D, lambda1, A
+                            ]))
+                    f.write("\n")
 elif cp["settings"]["style"] == "albe2002":
     elements = set()
     terms = set()
