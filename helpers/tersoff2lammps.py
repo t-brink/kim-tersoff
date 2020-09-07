@@ -234,13 +234,15 @@ elif cp["settings"]["style"] == "tersoff1989":
                     # Do we have ZBL parameters?
                     sec12 = params[frozenset([elem1, elem2])]
                     if "Z" in sec12:
-                        if elem2 != elem3:
-                            Zi = Zj = ZBLcut = ZBLexpscale = 0
-                        else:
-                            Zi = sec1["Z"]
-                            Zj = sec2["Z"]
-                            ZBLcut = sec12["ZBLcut"]
-                            ZBLexpscale = sec12["ZBLexpscale"]
+                        # LAMMPS does not accept files where ZBL
+                        # parameters for elem2 != elem3 are zero, even
+                        # if they are not used. Thus, we write the
+                        # correct (though unused) ones here for all
+                        # element combinations.
+                        Zi = sec1["Z"]
+                        Zj = sec2["Z"]
+                        ZBLcut = sec12["ZBLcut"]
+                        ZBLexpscale = sec12["ZBLexpscale"]
                         f.write(" ")
                         f.write(" ".join(str(i) for i in [Zi, Zj,
                                                           ZBLcut, ZBLexpscale]))
@@ -312,13 +314,15 @@ elif cp["settings"]["style"] == "tersoff1989full":
                             ]))
                     # Do we have ZBL parameters?
                     if "Z" in sec:
-                        if elem2 != elem3:
-                            Zi = Zj = ZBLcut = ZBLexpscale = 0
-                        else:
-                            Zi = sec11["Z"]
-                            Zj = sec22["Z"]
-                            ZBLcut = sec["ZBLcut"]
-                            ZBLexpscale = sec["ZBLexpscale"]
+                        # LAMMPS does not accept files where ZBL
+                        # parameters for elem2 != elem3 are zero, even
+                        # if they are not used. Thus, we write the
+                        # correct (though unused) ones here for all
+                        # element combinations.
+                        Zi = sec11["Z"]
+                        Zj = sec22["Z"]
+                        ZBLcut = sec["ZBLcut"]
+                        ZBLexpscale = sec["ZBLexpscale"]
                         f.write(" ")
                         f.write(" ".join(str(i) for i in [Zi, Zj,
                                                           ZBLcut, ZBLexpscale]))
@@ -405,13 +409,15 @@ elif cp["settings"]["style"] in ("albe2002", "juslin2005"):
                     sec11 = params[frozenset([elem1, elem1])]
                     sec22 = params[frozenset([elem2, elem2])]
                     if "Z" in sec12:
-                        if elem2 != elem3:
-                            Zi = Zj = ZBLcut = ZBLexpscale = 0
-                        else:
-                            Zi = sec11["Z"]
-                            Zj = sec22["Z"]
-                            ZBLcut = sec12["ZBLcut"]
-                            ZBLexpscale = sec12["ZBLexpscale"]
+                        # LAMMPS does not accept files where ZBL
+                        # parameters for elem2 != elem3 are zero, even
+                        # if they are not used. Thus, we write the
+                        # correct (though unused) ones here for all
+                        # element combinations.
+                        Zi = sec11["Z"]
+                        Zj = sec22["Z"]
+                        ZBLcut = sec12["ZBLcut"]
+                        ZBLexpscale = sec12["ZBLexpscale"]
                         f.write(" ")
                         f.write(" ".join(str(i) for i in [Zi, Zj,
                                                           ZBLcut, ZBLexpscale]))
