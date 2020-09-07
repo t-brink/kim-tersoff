@@ -36,7 +36,7 @@ endif()
 # End preamble
 
 
-set(MODEL_DRIVER_NAME "Tersoff_LAMMPS__MD_077075034781_003")
+set(MODEL_DRIVER_NAME "Tersoff_LAMMPS__MD_077075034781_004")
 
 add_kim_api_model_driver_library(
   NAME                    ${MODEL_DRIVER_NAME}
