@@ -1,7 +1,7 @@
 All files except pair_tersoff.hpp, pair_tersoff.cpp, pair_tersoff_zbl.hpp,
 and pair_tersoff_zbl.cpp are licensed under the MIT license as follows:
 
-  Copyright (c) 2012,2013,2014,2015,2017,2018,2019,2020 Tobias Brink
+  Copyright (c) 2012,2013,2014,2015,2017,2018,2019,2020,2021 Tobias Brink
 
   Permission is hereby granted, free of charge, to any person obtaining
   a copy of this software and associated documentation files (the
