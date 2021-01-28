@@ -357,12 +357,12 @@ read_settings(KIM::ModelDriverCreate * const model_driver_create,
               PotentialVariant& potential_variant) {
   ifstream settings_file(settings_filename.c_str()); // passing the std::string
                                                      // is C++11
-  bool got_line_error;
+  bool getline_error;
 
   // Get the list of species. //////////////////////////////////////////
   string species_line;
-  got_line_error = getline(settings_file, species_line).fail();
-  if (got_line_error) {
+  getline_error = getline(settings_file, species_line).fail();
+  if (getline_error) {
     LOG_ERROR("The settings file ("
               + settings_filename
               + ") does not contain a line with supported particle types.");
@@ -397,8 +397,8 @@ read_settings(KIM::ModelDriverCreate * const model_driver_create,
   // See if there is a variant (e.g. ZBL) requested ////////////////////
   potential_variant = standard;
   string variant_line;
-  got_line_error = getline(settings_file, variant_line).fail();
-  if (!got_line_error) {
+  getline_error = getline(settings_file, variant_line).fail();
+  if (!getline_error) {
     variant_line = trim(variant_line);
     if (!variant_line.empty()) {
       if (variant_line == "ZBL") {
