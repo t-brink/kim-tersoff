@@ -483,7 +483,7 @@ void PairTersoff::read_params(istream& infile, std::map<string,int> type_map,
   stringstream buffer;
   string line;
   while(getline(infile, line))
-    buffer << line.substr(0, line.find('#'));
+    buffer << line.substr(0, line.find('#')) << endl;
   // Read in parameters.
   Array3D<bool> got_interaction(n_spec,n_spec,n_spec);
   got_interaction = false;
