@@ -15,7 +15,7 @@
    Contributing author: Aidan Thompson (SNL)
 
    Modified for use with KIM by Tobias Brink (2012,2013,2014,2017,2018,2019,
-   2020).
+   2020,2021).
 
    process_dEdr support added by Mingjian Wen (2018)
 ------------------------------------------------------------------------- */
