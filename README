@@ -29,3 +29,12 @@ files for the script.
 Author: Tobias Brink <t.brink@mpie.de>
 
 Thanks to Mingjian Wen for adding process_dEdr support.
+
+
+Contributing
+============
+
+You can find the code repository at https://github.com/t-brink/kim-tersoff.
+If you find any bug you can either send me an e-mail or report it at
+Github. Please include a test case or rationale. Patches are also
+welcome either in the form of a diff or as a pull request on Github.
