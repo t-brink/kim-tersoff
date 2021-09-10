@@ -31,7 +31,7 @@ find_package(KIM-API-ITEMS 2.2 REQUIRED CONFIG)
 # End preamble
 
 kim_api_items_setup_before_project(ITEM_TYPE "modelDriver")
-project(Tersoff_LAMMPS__MD_077075034781_004 LANGUAGES CXX)
+project(Tersoff_LAMMPS__MD_077075034781_005 LANGUAGES CXX)
 kim_api_items_setup_after_project(ITEM_TYPE "modelDriver")
 
 add_kim_api_model_driver_library(

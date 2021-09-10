@@ -281,9 +281,27 @@ void PairTersoff::compute(const KIM::ModelComputeArguments&
         *energy += evdwl;
 
       if (atom_energy) {
-        const double en = 0.5 * evdwl;
-        atom_energy[i] += en;
-        atom_energy[j] += en;
+        // Non-symmetric assignment of bond energy.
+        //
+        // There are basically two ways to distribute this three-body
+        // term to particle energies. The first one, used in Tersoff's
+        // papers, is to write the sum over atom pairs (i.e., sum over
+        // i != j) and have a non-symmetric distribution. Brenner [in
+        // PRB 42, 9458–9471 (1990)], among others, favored to use a
+        // sum over bonds (i < j) and an averaged b_ij term so that
+        // the energy is distributed symmetrically. This is useful for
+        // Brenner's overbinding correction. Regarding the physics,
+        // the choice is arbitrary and does not affect the forces.
+        //
+        // KIM requires that non-contributing particles have zero
+        // energy. This is because these particles can be used to
+        // implement boundaries where the non-contributing particle
+        // does not correspond to a real particle somewhere else (as
+        // in periodic boundary conditions) and the energy assigned to
+        // it would be lost. Then, the sum of particle energies is not
+        // equal to the total energy. We are therefore forced to use
+        // the non-symmetric energy assignment.
+	atom_energy[i] += evdwl;
       }
 
       if (forces || virial || particle_virial || compute_process_dEdr) {
